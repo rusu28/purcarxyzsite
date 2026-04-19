@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router';
 import { ArrowLeft, RefreshCcw } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 type GamePhase = 'ready' | 'play' | 'gameover';
 
@@ -43,9 +44,20 @@ export const FlappyBird: React.FC = () => {
   const [phase, setPhase] = useState<GamePhase>('ready');
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState<number>(() => Number(localStorage.getItem(BEST_SCORE_KEY) ?? '0'));
+  const [selectedPurcar, setSelectedPurcar] = useState(() => {
+    const settings = loadStoredSettings();
+    return resolvePurcarAvatar(settings.purcarAvatar, Date.now());
+  });
 
   const birdImages = useMemo(() => {
-    const imagePaths = ['/assets/snake/head.png', '/assets/snake/purcar2.jpeg', '/assets/snake/purcar3.jpeg'];
+    const imagePaths = [
+      '/assets/snake/head.png',
+      '/assets/snake/purcar2.jpeg',
+      '/assets/snake/purcar3.jpeg',
+      '/assets/snake/purcar4.jpeg',
+      '/assets/snake/purcar5.jpeg',
+      '/assets/snake/purcar6.jpeg',
+    ];
     return imagePaths.map(path => {
       const image = new Image();
       image.src = path;
@@ -91,6 +103,8 @@ export const FlappyBird: React.FC = () => {
     phaseRef.current = nextPhase;
     setScore(0);
     setPhase(nextPhase);
+    const settings = loadStoredSettings();
+    setSelectedPurcar(resolvePurcarAvatar(settings.purcarAvatar, Date.now()));
   }, [getWorld]);
 
   useEffect(() => {
@@ -209,7 +223,7 @@ export const FlappyBird: React.FC = () => {
       ctx.save();
       ctx.translate(world.birdX, birdY);
       ctx.rotate(rotation);
-      const activeBird = birdImages[scoreRef.current % birdImages.length];
+      const activeBird = birdImages.find(img => img.src.includes(selectedPurcar.split('/').pop() ?? '')) ?? birdImages[0];
       if (activeBird.complete) {
         ctx.drawImage(activeBird, -world.birdSize / 2, -world.birdSize / 2, world.birdSize, world.birdSize);
       } else {
@@ -311,7 +325,7 @@ export const FlappyBird: React.FC = () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
     };
-  }, [bestScore, bgImage, birdImages, getWorld, sfx]);
+  }, [bestScore, bgImage, birdImages, getWorld, selectedPurcar, sfx]);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">

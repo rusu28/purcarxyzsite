@@ -38,6 +38,7 @@ export type MapSize = 'small' | 'medium' | 'large';
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export type Theme = 'light' | 'dark';
+export type PurcarAvatarMode = 'auto' | 'purcar1' | 'purcar2' | 'purcar3' | 'purcar4' | 'purcar5' | 'purcar6';
 
 export interface GameSettings {
   mode: GameMode;
@@ -46,6 +47,7 @@ export interface GameSettings {
   mapSize: MapSize;
   theme: Theme;
   soundEnabled: boolean;
+  purcarAvatar: PurcarAvatarMode;
 }
 
 export interface Snake {

@@ -2,12 +2,35 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Play } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { RETRO_GAMES } from '../data/retroGames';
-
-const PURCAR_ASSETS = ['/assets/snake/head.png', '/assets/snake/purcar2.jpeg', '/assets/snake/purcar3.jpeg'];
+import { RETRO_GAMES, SUPERMARIO_GAMES } from '../data/arcadeGames';
+import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 export const RetroArcade: React.FC = () => {
   const navigate = useNavigate();
+  const settings = loadStoredSettings();
+  const purcarPreview = resolvePurcarAvatar(settings.purcarAvatar, Date.now());
+
+  const renderGameGrid = (games: typeof RETRO_GAMES, source: 'retro' | 'supermario') => (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {games.map(game => (
+        <article key={`${source}:${game.slug}`} className="rounded-2xl border border-white/15 bg-white/[0.04] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold">{game.title}</h2>
+            <span className="text-xs text-white/60">{game.year ?? 'Web'}</span>
+          </div>
+
+          <div className="h-28 rounded-xl bg-black/35 border border-white/10 mb-4 flex items-center justify-center overflow-hidden relative">
+            <img src={purcarPreview} alt="Purcar" className="h-20 w-20 rounded-full object-cover opacity-80" draggable={false} />
+            <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_10%,rgba(0,0,0,0.55)_80%)]" />
+          </div>
+
+          <Button onClick={() => navigate(`/arcade/${source}/${game.slug}`)} className="w-full bg-white text-black hover:bg-white/90 font-bold">
+            <Play className="w-4 h-4 mr-1" /> Play
+          </Button>
+        </article>
+      ))}
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-[#0d0f14] text-white px-4 py-6 sm:px-8">
@@ -20,32 +43,13 @@ export const RetroArcade: React.FC = () => {
           <div className="w-[90px]" />
         </div>
 
-        <p className="text-center text-white/75 mb-8">Toate jocurile din `browser-games-main`, lansate direct din site.</p>
+        <p className="text-center text-white/75 mb-8">Toate jocurile din `browser-games-main` + `supermario/html-css-javascript-games-main`.</p>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {RETRO_GAMES.map((game, index) => (
-            <article key={game.slug} className="rounded-2xl border border-white/15 bg-white/[0.04] p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold">{game.title}</h2>
-                <span className="text-xs text-white/60">{game.year}</span>
-              </div>
+        <h2 className="text-xl font-black mb-4">Retro Classics</h2>
+        {renderGameGrid(RETRO_GAMES, 'retro')}
 
-              <div className="h-28 rounded-xl bg-black/35 border border-white/10 mb-4 flex items-center justify-center overflow-hidden relative">
-                <img
-                  src={PURCAR_ASSETS[index % PURCAR_ASSETS.length]}
-                  alt="Purcar"
-                  className="h-20 w-20 rounded-full object-cover opacity-80"
-                  draggable={false}
-                />
-                <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_10%,rgba(0,0,0,0.55)_80%)]" />
-              </div>
-
-              <Button onClick={() => navigate(`/arcade/${game.slug}`)} className="w-full bg-white text-black hover:bg-white/90 font-bold">
-                <Play className="w-4 h-4 mr-1" /> Play
-              </Button>
-            </article>
-          ))}
-        </div>
+        <h2 className="text-xl font-black mt-10 mb-4">HTML/CSS/JavaScript Games Pack</h2>
+        {renderGameGrid(SUPERMARIO_GAMES, 'supermario')}
       </div>
     </main>
   );

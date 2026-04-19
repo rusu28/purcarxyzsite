@@ -1,4 +1,4 @@
-import type { GameSettings, MapSize, Speed, Theme } from '../types/game';
+import type { GameSettings, MapSize, PurcarAvatarMode, Speed, Theme } from '../types/game';
 
 export type StoredSettings = Omit<GameSettings, 'mode'>;
 
@@ -8,6 +8,24 @@ export const DEFAULT_STORED_SETTINGS: StoredSettings = {
   mapSize: 'medium' as MapSize,
   theme: 'light' as Theme,
   soundEnabled: true,
+  purcarAvatar: 'auto' as PurcarAvatarMode,
+};
+
+export const PURCAR_ASSETS = {
+  purcar1: '/assets/snake/head.png',
+  purcar2: '/assets/snake/purcar2.jpeg',
+  purcar3: '/assets/snake/purcar3.jpeg',
+  purcar4: '/assets/snake/purcar4.jpeg',
+  purcar5: '/assets/snake/purcar5.jpeg',
+  purcar6: '/assets/snake/purcar6.jpeg',
+} as const;
+
+const PURCAR_KEYS = ['purcar1', 'purcar2', 'purcar3', 'purcar4', 'purcar5', 'purcar6'] as const;
+
+export const resolvePurcarAvatar = (mode: PurcarAvatarMode, seed = Date.now()): string => {
+  if (mode !== 'auto') return PURCAR_ASSETS[mode];
+  const index = Math.abs(seed) % PURCAR_KEYS.length;
+  return PURCAR_ASSETS[PURCAR_KEYS[index]];
 };
 
 export const applyThemeClass = (theme: Theme) => {
@@ -27,6 +45,7 @@ export const loadStoredSettings = (): StoredSettings => {
       mapSize: parsed.mapSize ?? DEFAULT_STORED_SETTINGS.mapSize,
       theme: parsed.theme ?? DEFAULT_STORED_SETTINGS.theme,
       soundEnabled: parsed.soundEnabled ?? DEFAULT_STORED_SETTINGS.soundEnabled,
+      purcarAvatar: parsed.purcarAvatar ?? DEFAULT_STORED_SETTINGS.purcarAvatar,
     };
   } catch {
     return DEFAULT_STORED_SETTINGS;

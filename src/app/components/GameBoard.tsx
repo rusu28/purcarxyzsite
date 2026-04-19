@@ -7,6 +7,7 @@ interface GameBoardProps {
   settings: GameSettings;
   width: number;
   height: number;
+  purcarAsset: string;
 }
 
 const FRUIT_ASSETS: Record<Apple['type'], string> = {
@@ -16,10 +17,9 @@ const FRUIT_ASSETS: Record<Apple['type'], string> = {
   cheese: '/assets/banana.png',
 };
 
-const HEAD_ASSETS = ['/assets/snake/head.png', '/assets/snake/purcar2.jpeg', '/assets/snake/purcar3.jpeg'] as const;
 const HEAD_FALLBACK = '/assets/snake/head.jpeg';
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width, height }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width, height, purcarAsset }) => {
   const { snake, secondSnake, apples, entities, portals, shieldActive, lightRadius, blenderPhase } = gameData;
   const { mode, theme } = settings;
 
@@ -59,9 +59,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
     const head = snake.body[0];
     return Math.abs(head.x - x) + Math.abs(head.y - y) <= lightRadius;
   };
-
-  const mainHeadAsset = HEAD_ASSETS[snake.body.length % HEAD_ASSETS.length];
-  const secondHeadAsset = HEAD_ASSETS[(snake.body.length + 1) % HEAD_ASSETS.length];
 
   return (
     <div
@@ -187,7 +184,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
             {isHead ? (
               <>
                 <img
-                  src={mainHeadAsset}
+                  src={purcarAsset}
                   onError={e => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = HEAD_FALLBACK;
@@ -223,7 +220,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
             >
               {isHead && (
                 <img
-                  src={secondHeadAsset}
+                  src={purcarAsset}
                   onError={e => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = HEAD_FALLBACK;

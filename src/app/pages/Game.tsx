@@ -8,7 +8,7 @@ import { useGameLogic } from '../hooks/useGameLogic';
 import type { GameMode, GameSettings, Direction } from '../types/game';
 import { submitScore } from '../lib/leaderboard';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { applyThemeClass, loadStoredSettings } from '../utils/settings';
+import { applyThemeClass, loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 export const Game: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export const Game: React.FC = () => {
     ...loadStoredSettings(),
     mode,
   };
+  const [selectedPurcar] = useState(() => resolvePurcarAvatar(settings.purcarAvatar, Date.now()));
 
   useEffect(() => {
     applyThemeClass(settings.theme);
@@ -94,7 +95,7 @@ export const Game: React.FC = () => {
   return (
     <main className={`relative min-h-screen overflow-hidden ${isDark ? 'bg-[#120b05]' : 'bg-[#fff5ed]'}`}>
       <div className="absolute inset-0 flex items-center justify-center">
-        <GameBoard gameData={gameData} settings={settings} width={width} height={height} />
+        <GameBoard gameData={gameData} settings={settings} width={width} height={height} purcarAsset={selectedPurcar} />
       </div>
 
       <div className="absolute inset-x-0 top-0 z-30 p-3 sm:p-4">

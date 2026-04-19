@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router';
 import { ArrowLeft, RefreshCcw } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 type Phase = 'ready' | 'play' | 'gameover';
 
@@ -44,9 +45,20 @@ export const Dino: React.FC = () => {
   const [phase, setPhase] = useState<Phase>('ready');
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState<number>(() => Number(localStorage.getItem(BEST_KEY) ?? '0'));
+  const [selectedPurcar, setSelectedPurcar] = useState(() => {
+    const settings = loadStoredSettings();
+    return resolvePurcarAvatar(settings.purcarAvatar, Date.now());
+  });
 
   const headImages = useMemo(() => {
-    const imagePaths = ['/assets/snake/head.png', '/assets/snake/purcar2.jpeg', '/assets/snake/purcar3.jpeg'];
+    const imagePaths = [
+      '/assets/snake/head.png',
+      '/assets/snake/purcar2.jpeg',
+      '/assets/snake/purcar3.jpeg',
+      '/assets/snake/purcar4.jpeg',
+      '/assets/snake/purcar5.jpeg',
+      '/assets/snake/purcar6.jpeg',
+    ];
     return imagePaths.map(path => {
       const image = new Image();
       image.src = path;
@@ -82,6 +94,8 @@ export const Dino: React.FC = () => {
     playerYRef.current = world.height - world.groundHeight - world.playerSize;
     setPhase(nextPhase);
     setScore(0);
+    const settings = loadStoredSettings();
+    setSelectedPurcar(resolvePurcarAvatar(settings.purcarAvatar, Date.now()));
   }, [getWorld]);
 
   useEffect(() => {
@@ -260,7 +274,7 @@ export const Dino: React.FC = () => {
       ctx.save();
       ctx.translate(world.playerX + world.playerSize / 2, playerYRef.current + world.playerSize / 2);
       ctx.rotate(tilt);
-      const activeHead = headImages[score % headImages.length];
+      const activeHead = headImages.find(img => img.src.includes(selectedPurcar.split('/').pop() ?? '')) ?? headImages[0];
       if (activeHead.complete) {
         ctx.drawImage(activeHead, -world.playerSize / 2, -world.playerSize / 2, world.playerSize, world.playerSize);
       } else {
@@ -301,7 +315,7 @@ export const Dino: React.FC = () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
     };
-  }, [bestScore, bgImage, getWorld, headImages, score]);
+  }, [bestScore, bgImage, getWorld, headImages, selectedPurcar, score]);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">

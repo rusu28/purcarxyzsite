@@ -45,7 +45,7 @@ export const router = createBrowserRouter([
     element: <RetroArcade />,
   },
   {
-    path: '/arcade/:slug',
+    path: '/arcade/:source/:slug',
     element: <RetroArcadePlayer />,
   },
   {

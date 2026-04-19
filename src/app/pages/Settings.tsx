@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { Slider } from '../components/ui/slider';
-import type { GameSettings, Speed, MapSize, Theme } from '../types/game';
+import type { GameSettings, Speed, MapSize, Theme, PurcarAvatarMode } from '../types/game';
 import { applyThemeClass, loadStoredSettings, saveStoredSettings } from '../utils/settings';
 
 export const Settings: React.FC = () => {
@@ -79,6 +79,22 @@ export const Settings: React.FC = () => {
               <SelectContent>
                 <SelectItem value="light">Light</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="purcarAvatar">Purcar Avatar</Label>
+            <Select value={settings.purcarAvatar} onValueChange={value => updateSetting('purcarAvatar', value as PurcarAvatarMode)}>
+              <SelectTrigger id="purcarAvatar"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto (random la start joc)</SelectItem>
+                <SelectItem value="purcar1">Purcar 1</SelectItem>
+                <SelectItem value="purcar2">Purcar 2</SelectItem>
+                <SelectItem value="purcar3">Purcar 3</SelectItem>
+                <SelectItem value="purcar4">Purcar 4</SelectItem>
+                <SelectItem value="purcar5">Purcar 5</SelectItem>
+                <SelectItem value="purcar6">Purcar 6</SelectItem>
               </SelectContent>
             </Select>
           </div>
