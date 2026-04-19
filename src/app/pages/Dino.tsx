@@ -171,7 +171,12 @@ export const Dino: React.FC = () => {
 
       if (phaseRef.current !== 'play') return;
 
-      const speed = Math.min(world.baseSpeed + distanceRef.current * 8, world.baseSpeed * 1.95);
+      const liveScore = Math.floor(distanceRef.current);
+      const progress = Math.min(1, liveScore / 260);
+      const easedProgress = 1 - Math.pow(1 - progress, 1.45);
+      const speedMultiplier = 1 + easedProgress * 1.15;
+      const speed = world.baseSpeed * speedMultiplier;
+      const difficulty = 1 + easedProgress * 1.6;
 
       velocityYRef.current += world.gravity * dt;
       playerYRef.current += velocityYRef.current * dt;
@@ -183,11 +188,23 @@ export const Dino: React.FC = () => {
       spawnTimerRef.current += dt;
       if (spawnTimerRef.current >= nextSpawnRef.current) {
         spawnTimerRef.current = 0;
-        nextSpawnRef.current = Math.random() * 0.8 + 0.95;
+        const baseSpawn = 1.14 - easedProgress * 0.44;
+        nextSpawnRef.current = clamp(baseSpawn + Math.random() * 0.26, 0.62, 1.28);
 
-        const width = clamp(44 + Math.random() * 34, 42, 90);
-        const height = clamp(52 + Math.random() * 84, 50, 130);
-        obstaclesRef.current.push({ x: world.width + width + 20, width, height });
+        const lastObstacle = obstaclesRef.current[obstaclesRef.current.length - 1];
+        if (!lastObstacle || world.width - lastObstacle.x > 120) {
+          const groupChance = 0.12 + easedProgress * 0.46;
+          const groupSize = Math.random() < groupChance ? (Math.random() < 0.72 ? 2 : 3) : 1;
+          let groupX = world.width + 40;
+
+          for (let i = 0; i < groupSize; i++) {
+            const width = clamp(34 + Math.random() * (20 + easedProgress * 12), 30, 74);
+            const height = clamp(48 + Math.random() * (46 + easedProgress * 32), 48, 132);
+            obstaclesRef.current.push({ x: groupX + width, width, height });
+            const groupGapBase = 52 - easedProgress * 24;
+            groupX += width + clamp(groupGapBase + Math.random() * 14, 24, 58);
+          }
+        }
       }
 
       obstaclesRef.current = obstaclesRef.current.filter(obstacle => obstacle.x + obstacle.width > -20);
@@ -195,7 +212,7 @@ export const Dino: React.FC = () => {
         obstacle.x -= speed * dt;
       });
 
-      distanceRef.current += dt * 10;
+      distanceRef.current += dt * (9.8 + difficulty * 1.15);
       const nextScore = Math.floor(distanceRef.current);
       if (nextScore !== score) {
         setScore(nextScore);
