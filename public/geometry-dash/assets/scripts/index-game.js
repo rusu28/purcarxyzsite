@@ -15,6 +15,10 @@ window.currentBird   = localStorage.getItem("iconCurrentBird")   || "bird_01";
 window.usePurcarCube = true;
 window.purcarDashSelectedAvatar = localStorage.getItem("purcarDashSelectedAvatar") || "purcar_head";
 window.purcarDashAvatarKeys = ["purcar_head", "purcar_2", "purcar_3", "purcar_4", "purcar_5", "purcar_6"];
+window.purcarDashCubeScale = parseFloat(localStorage.getItem("purcarDashCubeScale") || "1");
+if (!Number.isFinite(window.purcarDashCubeScale) || window.purcarDashCubeScale <= 0) {
+  window.purcarDashCubeScale = 1;
+}
 window.currentlevel = [
 	"stereo_madness", // internal level name
 	"Stereo Madness", // proper level name
@@ -2238,7 +2242,7 @@ class ps {
     if (window.usePurcarCube && spriteY.textures.exists(selectedPurcarAvatar) && this._playerSpriteLayer?.sprite) {
       this._playerSpriteLayer.sprite.setTexture(selectedPurcarAvatar);
       this._playerSpriteLayer.sprite.clearTint();
-      this._playerSpriteLayer.sprite.setDisplaySize(g, g);
+      this._playerSpriteLayer.sprite.setDisplaySize(g * window.purcarDashCubeScale, g * window.purcarDashCubeScale);
       if (this._playerGlowLayer?.sprite) this._playerGlowLayer.sprite.setVisible(false);
       if (this._playerOverlayLayer?.sprite) this._playerOverlayLayer.sprite.setVisible(false);
       if (this._playerExtraLayer?.sprite) this._playerExtraLayer.sprite.setVisible(false);
@@ -2733,7 +2737,7 @@ if (this.p.isFlying || this.p.isUfo) {
           const _miniS = this.p.isMini ? 0.6 : 1;
           const _shipCubeS = _miniS * 0.55;
           if (window.usePurcarCube && playerLayerItem === this._playerSpriteLayer) {
-            const desiredSide = g * _shipCubeS;
+            const desiredSide = g * _shipCubeS * window.purcarDashCubeScale;
             const frameW = playerLayerItem.sprite.width || 1;
             const frameH = playerLayerItem.sprite.height || 1;
             const sx = desiredSide / frameW;
@@ -2777,7 +2781,7 @@ if (this.p.isFlying || this.p.isUfo) {
               _miniS *= 0.42; //fix wave size
             }
             if (window.usePurcarCube && playerLayer === this._playerSpriteLayer) {
-              const desiredSide = g * _miniS;
+              const desiredSide = g * _miniS * window.purcarDashCubeScale;
               const frameW = playerLayer.sprite.width || 1;
               const frameH = playerLayer.sprite.height || 1;
               const sx = desiredSide / frameW;
@@ -2807,7 +2811,7 @@ if (this.p.isFlying || this.p.isUfo) {
               _miniS *= 0.42; //fix wave size
             }
             if (window.usePurcarCube && playerLayer === this._playerSpriteLayer) {
-              const desiredSide = g * _miniS;
+              const desiredSide = g * _miniS * window.purcarDashCubeScale;
               const frameW = playerLayer.sprite.width || 1;
               const frameH = playerLayer.sprite.height || 1;
               const sx = desiredSide / frameW;
@@ -5522,7 +5526,7 @@ class xs extends Phaser.Scene {
                 if (this._player && this._player._playerSpriteLayer && this._player._playerSpriteLayer.sprite) {
                   this._player._playerSpriteLayer.sprite.setTexture(capturedFrame);
                   this._player._playerSpriteLayer.sprite.clearTint();
-                  this._player._playerSpriteLayer.sprite.setDisplaySize(g, g);
+                  this._player._playerSpriteLayer.sprite.setDisplaySize(g * window.purcarDashCubeScale, g * window.purcarDashCubeScale);
                   if (this._player._playerGlowLayer?.sprite) this._player._playerGlowLayer.sprite.setVisible(false);
                   if (this._player._playerOverlayLayer?.sprite) this._player._playerOverlayLayer.sprite.setVisible(false);
                   if (this._player._playerExtraLayer?.sprite) this._player._playerExtraLayer.sprite.setVisible(false);

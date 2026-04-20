@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { Slider } from '../components/ui/slider';
-import type { GameSettings, Speed, MapSize, Theme, PurcarAvatarMode } from '../types/game';
+import type { GameSettings, Speed, MapSize, Theme, PurcarAvatarMode, PurcarDashCubeSize } from '../types/game';
 import { applyThemeClass, loadStoredSettings, saveStoredSettings } from '../utils/settings';
 
 export const Settings: React.FC = () => {
@@ -95,6 +95,18 @@ export const Settings: React.FC = () => {
                 <SelectItem value="purcar4">Purcar 4</SelectItem>
                 <SelectItem value="purcar5">Purcar 5</SelectItem>
                 <SelectItem value="purcar6">Purcar 6</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="purcarDashCubeSize">Purcar Dash Cube Size</Label>
+            <Select value={settings.purcarDashCubeSize} onValueChange={value => updateSetting('purcarDashCubeSize', value as PurcarDashCubeSize)}>
+              <SelectTrigger id="purcarDashCubeSize"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="large">Large (harder)</SelectItem>
+                <SelectItem value="xl">XL (very hard)</SelectItem>
               </SelectContent>
             </Select>
           </div>
