@@ -1,4 +1,4 @@
-import type { GameSettings, MapSize, PurcarAvatarMode, PurcarDashCubeSize, Speed, Theme } from '../types/game';
+import type { GameSettings, MapSize, PurcarAvatarMode, Speed, Theme } from '../types/game';
 
 export type StoredSettings = Omit<GameSettings, 'mode'>;
 
@@ -9,7 +9,7 @@ export const DEFAULT_STORED_SETTINGS: StoredSettings = {
   theme: 'light' as Theme,
   soundEnabled: true,
   purcarAvatar: 'auto' as PurcarAvatarMode,
-  purcarDashCubeSize: 'normal' as PurcarDashCubeSize,
+  purcarDashCubeScale: 1,
 };
 
 export const PURCAR_ASSETS = {
@@ -40,6 +40,11 @@ export const loadStoredSettings = (): StoredSettings => {
     const raw = localStorage.getItem('snake-settings');
     if (!raw) return DEFAULT_STORED_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<StoredSettings>;
+    const rawScale = parsed.purcarDashCubeScale;
+    const legacySize = (parsed as Partial<{ purcarDashCubeSize: 'normal' | 'large' | 'xl' }>).purcarDashCubeSize;
+    const legacyScale = legacySize === 'large' ? 1.35 : legacySize === 'xl' ? 1.8 : 1;
+    const parsedScale = typeof rawScale === 'number' && Number.isFinite(rawScale) ? rawScale : legacyScale;
+
     return {
       speed: parsed.speed ?? DEFAULT_STORED_SETTINGS.speed,
       appleCount: parsed.appleCount ?? DEFAULT_STORED_SETTINGS.appleCount,
@@ -47,7 +52,7 @@ export const loadStoredSettings = (): StoredSettings => {
       theme: parsed.theme ?? DEFAULT_STORED_SETTINGS.theme,
       soundEnabled: parsed.soundEnabled ?? DEFAULT_STORED_SETTINGS.soundEnabled,
       purcarAvatar: parsed.purcarAvatar ?? DEFAULT_STORED_SETTINGS.purcarAvatar,
-      purcarDashCubeSize: parsed.purcarDashCubeSize ?? DEFAULT_STORED_SETTINGS.purcarDashCubeSize,
+      purcarDashCubeScale: Math.max(0.5, Math.min(6, parsedScale)),
     };
   } catch {
     return DEFAULT_STORED_SETTINGS;
@@ -57,10 +62,5 @@ export const loadStoredSettings = (): StoredSettings => {
 export const saveStoredSettings = (settings: StoredSettings) => {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem('snake-settings', JSON.stringify(settings));
-  const scaleMap: Record<StoredSettings['purcarDashCubeSize'], string> = {
-    normal: '1',
-    large: '1.35',
-    xl: '1.8',
-  };
-  localStorage.setItem('purcarDashCubeScale', scaleMap[settings.purcarDashCubeSize]);
+  localStorage.setItem('purcarDashCubeScale', String(settings.purcarDashCubeScale));
 };

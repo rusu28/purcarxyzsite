@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { Slider } from '../components/ui/slider';
-import type { GameSettings, Speed, MapSize, Theme, PurcarAvatarMode, PurcarDashCubeSize } from '../types/game';
+import type { GameSettings, Speed, MapSize, Theme, PurcarAvatarMode } from '../types/game';
 import { applyThemeClass, loadStoredSettings, saveStoredSettings } from '../utils/settings';
 
 export const Settings: React.FC = () => {
@@ -100,15 +100,21 @@ export const Settings: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="purcarDashCubeSize">Purcar Dash Cube Size</Label>
-            <Select value={settings.purcarDashCubeSize} onValueChange={value => updateSetting('purcarDashCubeSize', value as PurcarDashCubeSize)}>
-              <SelectTrigger id="purcarDashCubeSize"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="large">Large (harder)</SelectItem>
-                <SelectItem value="xl">XL (very hard)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="purcarDashCubeScale">
+              Purcar Dash Cube Size: {settings.purcarDashCubeScale.toFixed(2)}x
+            </Label>
+            <Slider
+              id="purcarDashCubeScale"
+              min={0.5}
+              max={6}
+              step={0.05}
+              value={[settings.purcarDashCubeScale]}
+              onValueChange={value => updateSetting('purcarDashCubeScale', value[0])}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              1.00x = normal. 6.00x poate ajunge aproape cat ecranul (mult mai greu).
+            </p>
           </div>
 
           <div className="flex items-center justify-between">
