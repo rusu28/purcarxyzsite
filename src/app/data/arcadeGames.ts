@@ -1,4 +1,4 @@
-export type ArcadeSource = 'retro' | 'supermario';
+export type ArcadeSource = 'retro' | 'supermario' | 'geometry';
 
 export type ArcadeGame = {
   slug: string;
@@ -62,10 +62,16 @@ export const SUPERMARIO_GAMES: ArcadeGame[] = [
   { slug: '37-Sliding-Puzzle-Game', title: 'Sliding Puzzle', source: 'supermario' },
 ];
 
-export const ARCADE_GAMES: ArcadeGame[] = [...RETRO_GAMES, ...SUPERMARIO_GAMES];
+export const GEOMETRY_GAMES: ArcadeGame[] = [
+  { slug: 'geometry-dash', title: 'Purcar Dash', source: 'geometry' },
+];
+
+export const ARCADE_GAMES: ArcadeGame[] = [...RETRO_GAMES, ...SUPERMARIO_GAMES, ...GEOMETRY_GAMES];
 export const ARCADE_GAME_MAP = Object.fromEntries(ARCADE_GAMES.map(game => [`${game.source}:${game.slug}`, game]));
 
 export const getArcadeGameSrc = (game: ArcadeGame) =>
   game.source === 'retro'
     ? `/browser-games-main/${game.slug}/index.html`
-    : `/supermario/html-css-javascript-games-main/${game.slug}/index.html`;
+    : game.source === 'supermario'
+      ? `/supermario/html-css-javascript-games-main/${game.slug}/index.html`
+      : '/geometry-dash/index.html';

@@ -172,11 +172,11 @@ export const Dino: React.FC = () => {
       if (phaseRef.current !== 'play') return;
 
       const liveScore = Math.floor(distanceRef.current);
-      const progress = Math.min(1, liveScore / 260);
-      const easedProgress = 1 - Math.pow(1 - progress, 1.45);
-      const speedMultiplier = 1 + easedProgress * 1.15;
+      const progress = Math.min(1, liveScore / 320);
+      const easedProgress = 1 - Math.pow(1 - progress, 1.55);
+      const speedMultiplier = 1 + easedProgress * 0.9;
       const speed = world.baseSpeed * speedMultiplier;
-      const difficulty = 1 + easedProgress * 1.6;
+      const difficulty = 1 + easedProgress * 1.35;
 
       velocityYRef.current += world.gravity * dt;
       playerYRef.current += velocityYRef.current * dt;
@@ -188,22 +188,30 @@ export const Dino: React.FC = () => {
       spawnTimerRef.current += dt;
       if (spawnTimerRef.current >= nextSpawnRef.current) {
         spawnTimerRef.current = 0;
-        const baseSpawn = 1.14 - easedProgress * 0.44;
-        nextSpawnRef.current = clamp(baseSpawn + Math.random() * 0.26, 0.62, 1.28);
+        const baseDistancePx = clamp(world.width * (0.44 - easedProgress * 0.12), 220, 460);
+        const jitterDistancePx = (Math.random() - 0.5) * 80;
+        const distanceBasedSpawn = (baseDistancePx + jitterDistancePx) / speed;
+        nextSpawnRef.current = clamp(distanceBasedSpawn, 0.58, 1.35);
 
         const lastObstacle = obstaclesRef.current[obstaclesRef.current.length - 1];
-        if (!lastObstacle || world.width - lastObstacle.x > 120) {
-          const groupChance = 0.12 + easedProgress * 0.46;
-          const groupSize = Math.random() < groupChance ? (Math.random() < 0.72 ? 2 : 3) : 1;
-          let groupX = world.width + 40;
+        const minReactionWindow = clamp(0.9 - easedProgress * 0.28, 0.62, 0.9);
+        const minSpawnGapPx = speed * minReactionWindow;
+        const lastObstacleRight = lastObstacle ? lastObstacle.x + lastObstacle.width : -Infinity;
+        const canSpawn = !lastObstacle || world.width - lastObstacleRight >= minSpawnGapPx;
+        if (canSpawn) {
+          const groupChance = 0.08 + easedProgress * 0.2;
+          const groupSize = Math.random() < groupChance ? 2 : 1;
+          let groupX = world.width + 36;
 
           for (let i = 0; i < groupSize; i++) {
-            const width = clamp(34 + Math.random() * (20 + easedProgress * 12), 30, 74);
-            const height = clamp(48 + Math.random() * (46 + easedProgress * 32), 48, 132);
+            const width = clamp(34 + Math.random() * (18 + easedProgress * 8), 30, 62);
+            const height = clamp(48 + Math.random() * (34 + easedProgress * 22), 48, 118);
             obstaclesRef.current.push({ x: groupX + width, width, height });
-            const groupGapBase = 52 - easedProgress * 24;
-            groupX += width + clamp(groupGapBase + Math.random() * 14, 24, 58);
+            const groupGapBase = 50 - easedProgress * 12;
+            groupX += width + clamp(groupGapBase + Math.random() * 12, 28, 64);
           }
+        } else {
+          nextSpawnRef.current = clamp(nextSpawnRef.current * 0.45, 0.18, 0.4);
         }
       }
 

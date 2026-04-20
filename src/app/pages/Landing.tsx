@@ -79,6 +79,13 @@ export const Landing: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={() => navigate('/arcade/geometry/geometry-dash')}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-white/35 bg-[#2c294f] hover:bg-[#3a3464] transition-colors font-bold tracking-[0.08em] uppercase"
+          >
+            Play Purcar Dash
+          </button>
+          <button
+            type="button"
             onClick={() => navigate('/menu')}
             className="w-full sm:w-auto px-6 py-3 rounded-xl border border-white/35 bg-white/10 hover:bg-white/20 transition-colors font-bold tracking-[0.08em] uppercase"
           >

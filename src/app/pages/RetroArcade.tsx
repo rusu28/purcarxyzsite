@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Play } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { RETRO_GAMES, SUPERMARIO_GAMES } from '../data/arcadeGames';
+import { GEOMETRY_GAMES, RETRO_GAMES, SUPERMARIO_GAMES } from '../data/arcadeGames';
 import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 export const RetroArcade: React.FC = () => {
@@ -10,7 +10,7 @@ export const RetroArcade: React.FC = () => {
   const settings = loadStoredSettings();
   const purcarPreview = resolvePurcarAvatar(settings.purcarAvatar, Date.now());
 
-  const renderGameGrid = (games: typeof RETRO_GAMES, source: 'retro' | 'supermario') => (
+  const renderGameGrid = (games: typeof RETRO_GAMES, source: 'retro' | 'supermario' | 'geometry') => (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {games.map(game => (
         <article key={`${source}:${game.slug}`} className="rounded-2xl border border-white/15 bg-white/[0.04] p-4">
@@ -50,6 +50,9 @@ export const RetroArcade: React.FC = () => {
 
         <h2 className="text-xl font-black mt-10 mb-4">HTML/CSS/JavaScript Games Pack</h2>
         {renderGameGrid(SUPERMARIO_GAMES, 'supermario')}
+
+        <h2 className="text-xl font-black mt-10 mb-4">Geometry</h2>
+        {renderGameGrid(GEOMETRY_GAMES, 'geometry')}
       </div>
     </main>
   );
