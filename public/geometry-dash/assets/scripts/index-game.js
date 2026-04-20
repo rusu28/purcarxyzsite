@@ -2732,8 +2732,18 @@ if (this.p.isFlying || this.p.isUfo) {
           playerLayerItem.sprite.rotation = this.p.mirrored ? -playerRotation : playerRotation;
           const _miniS = this.p.isMini ? 0.6 : 1;
           const _shipCubeS = _miniS * 0.55;
-          playerLayerItem.sprite.scaleY = this.p.gravityFlipped ? -_shipCubeS : _shipCubeS;
-          playerLayerItem.sprite.scaleX = this.p.mirrored ? -_shipCubeS : _shipCubeS;
+          if (window.usePurcarCube && playerLayerItem === this._playerSpriteLayer) {
+            const desiredSide = g * _shipCubeS;
+            const frameW = playerLayerItem.sprite.width || 1;
+            const frameH = playerLayerItem.sprite.height || 1;
+            const sx = desiredSide / frameW;
+            const sy = desiredSide / frameH;
+            playerLayerItem.sprite.scaleY = this.p.gravityFlipped ? -sy : sy;
+            playerLayerItem.sprite.scaleX = this.p.mirrored ? -sx : sx;
+          } else {
+            playerLayerItem.sprite.scaleY = this.p.gravityFlipped ? -_shipCubeS : _shipCubeS;
+            playerLayerItem.sprite.scaleX = this.p.mirrored ? -_shipCubeS : _shipCubeS;
+          }
         }
       }
       if (_ufoMode) {
@@ -2766,8 +2776,18 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.42; //fix wave size
             }
-            playerLayer.sprite.scaleY = (this.p.gravityFlipped ? -_miniS : _miniS);
-            playerLayer.sprite.scaleX = (this.p.mirrored ? -_miniS : _miniS);
+            if (window.usePurcarCube && playerLayer === this._playerSpriteLayer) {
+              const desiredSide = g * _miniS;
+              const frameW = playerLayer.sprite.width || 1;
+              const frameH = playerLayer.sprite.height || 1;
+              const sx = desiredSide / frameW;
+              const sy = desiredSide / frameH;
+              playerLayer.sprite.scaleY = this.p.gravityFlipped ? -sy : sy;
+              playerLayer.sprite.scaleX = this.p.mirrored ? -sx : sx;
+            } else {
+              playerLayer.sprite.scaleY = this.p.gravityFlipped ? -_miniS : _miniS;
+              playerLayer.sprite.scaleX = this.p.mirrored ? -_miniS : _miniS;
+            }
         }
       }
       for (const layer of this._spiderLayers) {
@@ -2786,8 +2806,18 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isWave && this._waveLayers.includes(playerLayer)) {
               _miniS *= 0.42; //fix wave size
             }
-            playerLayer.sprite.scaleY = (this.p.gravityFlipped ? -_miniS : _miniS);
-            playerLayer.sprite.scaleX = (this.p.mirrored ? -_miniS : _miniS);
+            if (window.usePurcarCube && playerLayer === this._playerSpriteLayer) {
+              const desiredSide = g * _miniS;
+              const frameW = playerLayer.sprite.width || 1;
+              const frameH = playerLayer.sprite.height || 1;
+              const sx = desiredSide / frameW;
+              const sy = desiredSide / frameH;
+              playerLayer.sprite.scaleY = this.p.gravityFlipped ? -sy : sy;
+              playerLayer.sprite.scaleX = this.p.mirrored ? -sx : sx;
+            } else {
+              playerLayer.sprite.scaleY = this.p.gravityFlipped ? -_miniS : _miniS;
+              playerLayer.sprite.scaleX = this.p.mirrored ? -_miniS : _miniS;
+            }
         }
       }
     }
@@ -5322,8 +5352,8 @@ class xs extends Phaser.Scene {
       const _refreshPreview = (tab, frame) => {
         if (tab === "icon") {
           selectedIcon.setTexture(frame);
-          const s = Math.min(80 / (selectedIcon.width || 80), 80 / (selectedIcon.height || 80)) * 0.9;
-          selectedIcon.setScale(s);
+          const side = 80 * 0.9;
+          selectedIcon.setDisplaySize(side, side);
           selectedIcon.clearTint();
           selectedIconExtra.setVisible(false);
           return;
@@ -5430,11 +5460,16 @@ class xs extends Phaser.Scene {
           const iconImg = tab === "icon"
             ? this.add.image(ix, iy, frame).setScrollFactor(0).setDepth(103)
             : this.add.image(ix, iy, atlas, frame).setScrollFactor(0).setDepth(103).setTint(0xAFAFAF);
+          const iconSide = iconSize * 0.7;
           const origScale = Math.min(
             iconSize / (iconImg.width  || iconSize),
             iconSize / (iconImg.height || iconSize)
           ) * 0.7;
-          iconImg.setScale(origScale);
+          if (tab === "icon") {
+            iconImg.setDisplaySize(iconSide, iconSide);
+          } else {
+            iconImg.setScale(origScale);
+          }
           const extraFrame = tab === "icon" ? null : frame.replace("_001.png", "_2_001.png");
           const extraInfo = extraFrame ? R(this, extraFrame) : null;
           const extraImg = extraInfo
@@ -5449,12 +5484,31 @@ class xs extends Phaser.Scene {
           ((capturedFrame, capturedImg, capturedExtra, capturedOrigScale) => {
             hitRect.on("pointerover",  () => { capturedImg.setAlpha(0.65); if (capturedExtra) capturedExtra.setAlpha(0.65); });
             hitRect.on("pointerout",   () => {
-              capturedImg.setAlpha(1); capturedImg.setScale(capturedOrigScale);
+              capturedImg.setAlpha(1);
+              if (tab === "icon") {
+                const side = iconSize * 0.7;
+                capturedImg.setDisplaySize(side, side);
+              } else {
+                capturedImg.setScale(capturedOrigScale);
+              }
               if (capturedExtra) { capturedExtra.setAlpha(1); capturedExtra.setScale(capturedOrigScale); }
             });
-            hitRect.on("pointerdown",  () => { capturedImg.setScale(capturedOrigScale * 1.15); if (capturedExtra) capturedExtra.setScale(capturedOrigScale * 1.15); });
+            hitRect.on("pointerdown",  () => {
+              if (tab === "icon") {
+                const side = iconSize * 0.7 * 1.15;
+                capturedImg.setDisplaySize(side, side);
+              } else {
+                capturedImg.setScale(capturedOrigScale * 1.15);
+              }
+              if (capturedExtra) capturedExtra.setScale(capturedOrigScale * 1.15);
+            });
             hitRect.on("pointerup",    () => {
-              capturedImg.setScale(capturedOrigScale);
+              if (tab === "icon") {
+                const side = iconSize * 0.7;
+                capturedImg.setDisplaySize(side, side);
+              } else {
+                capturedImg.setScale(capturedOrigScale);
+              }
               capturedImg.setAlpha(1);
               if (capturedExtra) { capturedExtra.setScale(capturedOrigScale); capturedExtra.setAlpha(1); }
               if (!this._iconOverlay) return;
