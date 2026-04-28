@@ -13,6 +13,8 @@ const statusItems = [
   { label: 'King', value: 'Charging', tone: 'text-[#ff6b4a]' },
 ] as const;
 
+const typingLines = ['Initializing Uranium King...', 'Loading memory core...', 'Chat opens May 27.'] as const;
+
 export const Alpha: React.FC = () => {
   const navigate = useNavigate();
   const countdown = useLaunchCountdown();
@@ -98,8 +100,7 @@ export const Alpha: React.FC = () => {
 
             <div className="space-y-4 p-4 sm:p-5">
               <AlphaBubble label="You" text="Can I ask anything yet?" />
-              <AlphaBubble label="Purcar Alpha" text="Not yet. The Uranium King is charging the core." active />
-              <AlphaBubble label="Purcar Alpha" text={`Doors open on ${LAUNCH_DATE_LABEL}. Until then, the playground stays online.`} active />
+              <AlphaTypingMessages />
 
               <div className="grid gap-2 pt-2 sm:grid-cols-2">
                 {promptChips.map(prompt => (
@@ -158,6 +159,47 @@ const CountdownTile: React.FC<{ value: string; label: string }> = ({ value, labe
   <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-center backdrop-blur">
     <div className="font-mono text-3xl font-black text-[#83e377]">{value}</div>
     <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-white/50">{label}</div>
+  </div>
+);
+
+const AlphaTypingMessages: React.FC = () => {
+  const [lineIndex, setLineIndex] = React.useState(0);
+  const [charIndex, setCharIndex] = React.useState(0);
+  const currentLine = typingLines[lineIndex] ?? '';
+  const isComplete = lineIndex >= typingLines.length;
+
+  React.useEffect(() => {
+    if (isComplete) return;
+
+    if (charIndex < currentLine.length) {
+      const timeout = window.setTimeout(() => setCharIndex(value => value + 1), 42);
+      return () => window.clearTimeout(timeout);
+    }
+
+    const nextLine = window.setTimeout(() => {
+      setLineIndex(value => value + 1);
+      setCharIndex(0);
+    }, 650);
+    return () => window.clearTimeout(nextLine);
+  }, [charIndex, currentLine, isComplete]);
+
+  return (
+    <div className="space-y-3">
+      {typingLines.slice(0, lineIndex).map(line => (
+        <AlphaBubble key={line} label="Purcar Alpha" text={line} active />
+      ))}
+      {!isComplete && <AlphaTypingBubble text={currentLine.slice(0, charIndex)} />}
+    </div>
+  );
+};
+
+const AlphaTypingBubble: React.FC<{ text: string }> = ({ text }) => (
+  <div className="rounded-lg border border-[#83e377]/35 bg-[#83e377]/10 p-4">
+    <div className="text-xs font-black uppercase tracking-[0.16em] text-[#83e377]">Purcar Alpha</div>
+    <p className="mt-2 min-h-7 leading-7 text-white/75">
+      {text}
+      <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-[#83e377] align-middle" />
+    </p>
   </div>
 );
 
