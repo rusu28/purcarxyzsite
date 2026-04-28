@@ -10,6 +10,7 @@ import { FlappyBird } from './pages/FlappyBird';
 import { Dino } from './pages/Dino';
 import { RetroArcade } from './pages/RetroArcade';
 import { RetroArcadePlayer } from './pages/RetroArcadePlayer';
+import { Alpha } from './pages/Alpha';
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
   {
     path: '/arcade/:source/:slug',
     element: <RetroArcadePlayer />,
+  },
+  {
+    path: '/alpha',
+    element: <Alpha />,
   },
   {
     path: '*',

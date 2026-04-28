@@ -64,6 +64,9 @@ export const Landing: React.FC = () => {
           </button>
 
           <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex">
+            <button type="button" onClick={() => navigate('/alpha')} className="transition-colors hover:text-white">
+              Alpha
+            </button>
             <button type="button" onClick={() => navigate('/arcade')} className="transition-colors hover:text-white">
               Arcade
             </button>
@@ -183,6 +186,14 @@ export const Landing: React.FC = () => {
             <p className="mt-5 max-w-xl text-sm leading-6 text-white/58">
               This arcade is the bridge to the main site. Purcar Alpha launches as the AI chat experience on {LAUNCH_DATE_LABEL}.
             </p>
+
+            <Button
+              onClick={() => navigate('/alpha')}
+              className="mt-6 h-11 rounded-full bg-[#83e377] px-5 text-[#10220e] hover:bg-[#a7f39f]"
+            >
+              Open Alpha Preview
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </section>
