@@ -159,7 +159,7 @@ export const Landing: React.FC = () => {
           <div className="qual-panel p-6 sm:p-8 lg:p-10">
             <div className="grid gap-4">
               <ChatBubble label="You" text="What can Purcar Alpha help me with?" />
-              <ChatBubble label="Purcar Alpha" text="Soon, I will answer questions, help with ideas, and connect the playground to the main AI chat." active />
+              <ChatBubble label="Purcar Alpha" text="Soon, you will talk with the Uranium King. Ask anything, get answers, and try not to start a meltdown." active />
             </div>
 
             <div className="mt-7 rounded-lg border border-white/10 bg-black/30 p-3">
