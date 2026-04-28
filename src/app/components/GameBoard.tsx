@@ -145,9 +145,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
             animationDelay: `${idx * 80}ms`,
             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))',
           }}
-          className="flex items-center justify-center apple-float"
+          className="flex items-center justify-center"
         >
-          <img src={FRUIT_ASSETS[apple.type]} alt={apple.type} className="w-full h-full object-contain" loading="eager" draggable={false} />
+          <img src={FRUIT_ASSETS[apple.type]} alt={apple.type} className="h-full w-full object-contain apple-float" loading="eager" draggable={false} />
         </div>
       ))}
 

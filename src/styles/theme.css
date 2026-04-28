@@ -306,13 +306,13 @@
 
 @keyframes portal-pulse {
   0% {
-    transform: scale(1);
+    filter: brightness(1);
   }
   50% {
-    transform: scale(1.06);
+    filter: brightness(1.16) drop-shadow(0 0 8px rgba(183, 134, 255, 0.75));
   }
   100% {
-    transform: scale(1);
+    filter: brightness(1);
   }
 }
 
