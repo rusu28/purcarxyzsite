@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, Bird, Gamepad2, Gauge, Grid3X3, Joystick, Play, Rabbit, Sparkles, Trophy } from 'lucide-react';
+import { ArrowRight, Bird, Bot, Gamepad2, Gauge, Grid3X3, Joystick, Play, Rabbit, Send, Sparkles, Trophy } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { LaunchTimer, LAUNCH_DATE_LABEL, LAUNCH_TITLE, padCountdown, useLaunchCountdown } from '../components/LaunchTimer';
 import { ARCADE_GAMES } from '../data/arcadeGames';
@@ -142,6 +142,52 @@ export const Landing: React.FC = () => {
       </section>
 
       <section className="bg-[#11100f] px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg border border-white/10 bg-[#171a1d] lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="relative min-h-[320px] border-b border-white/10 bg-black lg:border-b-0 lg:border-r">
+            <img src="/assets/backgroundlandingpage.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" draggable={false} />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,16,15,0.88),rgba(17,16,15,0.48))]" />
+            <div className="absolute inset-0 qual-flow-grid opacity-35" />
+            <div className="relative z-10 flex h-full min-h-[320px] flex-col justify-end p-6 sm:p-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#83e377] text-[#10220e]">
+                <Bot className="h-6 w-6" />
+              </div>
+              <p className="mt-6 text-sm font-black uppercase tracking-[0.2em] text-[#83e377]">Purcar Alpha</p>
+              <h2 className="mt-3 max-w-lg text-3xl font-black leading-tight sm:text-5xl">Ask Purcar Alpha soon.</h2>
+            </div>
+          </div>
+
+          <div className="qual-panel p-6 sm:p-8 lg:p-10">
+            <div className="grid gap-4">
+              <ChatBubble label="You" text="What can Purcar Alpha help me with?" />
+              <ChatBubble label="Purcar Alpha" text="Soon, I will answer questions, help with ideas, and connect the playground to the main AI chat." active />
+            </div>
+
+            <div className="mt-7 rounded-lg border border-white/10 bg-black/30 p-3">
+              <div className="flex items-center gap-3">
+                <input
+                  disabled
+                  placeholder="Ask anything..."
+                  className="min-w-0 flex-1 bg-transparent px-2 py-3 text-white placeholder:text-white/42 outline-none"
+                />
+                <button
+                  type="button"
+                  disabled
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/12 text-white/45"
+                  aria-label="Purcar Alpha is launching soon"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-5 max-w-xl text-sm leading-6 text-white/58">
+              This arcade is the bridge to the main site. Purcar Alpha launches as the AI chat experience on {LAUNCH_DATE_LABEL}.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#11100f] px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -251,6 +297,15 @@ const Metric: React.FC<{ value: string; label: string }> = ({ value, label }) =>
   <div className="bg-black/30 px-4 py-4">
     <div className="text-2xl font-black text-white">{value}</div>
     <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-white/50">{label}</div>
+  </div>
+);
+
+const ChatBubble: React.FC<{ label: string; text: string; active?: boolean }> = ({ label, text, active = false }) => (
+  <div className={`rounded-lg border p-4 ${active ? 'border-[#83e377]/40 bg-[#83e377]/10' : 'border-white/10 bg-black/25'}`}>
+    <div className={`text-xs font-black uppercase tracking-[0.16em] ${active ? 'text-[#83e377]' : 'text-white/45'}`}>
+      {label}
+    </div>
+    <p className="mt-2 leading-7 text-white/78">{text}</p>
   </div>
 );
 
