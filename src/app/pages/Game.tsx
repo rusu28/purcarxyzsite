@@ -93,13 +93,13 @@ export const Game: React.FC = () => {
   }, [changeDirection]);
 
   return (
-    <main className={`relative min-h-screen overflow-hidden ${isDark ? 'bg-[#120b05]' : 'bg-[#fff5ed]'}`}>
+    <main className={`relative min-h-screen overflow-hidden ${isDark ? 'bg-[#101214]' : 'bg-[#e6f4cc]'}`}>
       <div className="absolute inset-0 flex items-center justify-center">
         <GameBoard gameData={gameData} settings={settings} width={width} height={height} purcarAsset={selectedPurcar} />
       </div>
 
       <div className="absolute inset-x-0 top-0 z-30 p-3 sm:p-4">
-        <div className={`mx-auto max-w-6xl rounded-2xl border px-3 py-2 backdrop-blur-md ${isDark ? 'bg-black/35 border-white/15 text-[#ffd9b4]' : 'bg-white/70 border-black/10 text-[#5a3000]'}`}>
+        <div className={`mx-auto max-w-6xl rounded-lg border px-3 py-2 backdrop-blur-md ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-white/80 border-[#5f9f38]/25 text-[#234915]'}`}>
           <div className="flex items-center justify-between gap-2">
             <Button variant="outline" onClick={() => navigate('/menu')} className="rounded-full">
               <Home className="w-4 h-4" />
@@ -116,10 +116,10 @@ export const Game: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button onClick={togglePause} className="rounded-full bg-[#0055c4] hover:bg-[#0048a5] text-white">
+              <Button onClick={togglePause} className="rounded-full bg-[#2558c7] hover:bg-[#1f48a5] text-white">
                 {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
               </Button>
-              <Button onClick={resetGame} className="rounded-full bg-[#8a4c00] hover:bg-[#6f3d00] text-white">
+              <Button onClick={resetGame} className="rounded-full bg-[#f2c14e] text-[#10220e] hover:bg-[#ffd86f]">
                 <RotateCcw className="w-4 h-4" />
               </Button>
             </div>
@@ -127,8 +127,12 @@ export const Game: React.FC = () => {
         </div>
       </div>
 
-      <div className={`sm:hidden absolute inset-x-0 bottom-0 z-30 rounded-t-[2rem] border-t px-4 py-4 ${isDark ? 'bg-black/45 border-white/20' : 'bg-white/75 border-black/15'} backdrop-blur-md`}>
+      <div className={`sm:hidden absolute inset-x-0 bottom-0 z-30 border-t px-4 py-4 text-center ${isDark ? 'bg-black/45 border-white/20' : 'bg-white/75 border-[#5f9f38]/25'} backdrop-blur-md`}>
         <TouchControls onDirectionChange={handleDirectionChange} theme={settings.theme} />
+      </div>
+
+      <div className="absolute bottom-4 right-4 z-30 hidden sm:block">
+        <TouchControls onDirectionChange={handleDirectionChange} theme={settings.theme} compact />
       </div>
 
       {gameData.gameState === 'gameover' && (

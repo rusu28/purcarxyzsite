@@ -365,7 +365,7 @@ export const Dino: React.FC = () => {
         </div>
       </div>
 
-      {phase !== 'play' && <div className="absolute bottom-6 inset-x-0 z-20 text-center text-sm sm:text-base text-white/90">SPACE sau click/tap ca sa incepi</div>}
+      {phase !== 'play' && <div className="absolute inset-x-4 bottom-6 z-20 text-center text-sm text-white/90 sm:text-base">Press SPACE or tap to start</div>}
     </main>
   );
 };

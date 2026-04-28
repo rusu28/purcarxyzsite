@@ -21,7 +21,7 @@ const HEAD_FALLBACK = '/assets/snake/head.jpeg';
 
 export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width, height, purcarAsset }) => {
   const { snake, secondSnake, apples, entities, portals, shieldActive, lightRadius, blenderPhase } = gameData;
-  const { mode, theme } = settings;
+  const { mode, theme, speed } = settings;
 
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -35,23 +35,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
   }, []);
 
   const isMobile = viewport.width < 768;
-  const maxBoardWidth = isMobile ? viewport.width - 8 : viewport.width - 28;
-  const maxBoardHeight = isMobile ? viewport.height - 250 : viewport.height - 110;
-  const cellSize = Math.max(16, Math.min(64, Math.floor(Math.min(maxBoardWidth / width, maxBoardHeight / height))));
+  const maxBoardWidth = isMobile ? viewport.width - 12 : viewport.width - 320;
+  const maxBoardHeight = isMobile ? viewport.height - 280 : viewport.height - 130;
+  const cellSize = Math.max(isMobile ? 10 : 16, Math.min(64, Math.floor(Math.min(maxBoardWidth / width, maxBoardHeight / height))));
   const boardWidth = width * cellSize;
   const boardHeight = height * cellSize;
+  const moveDuration = speed === 'fast' ? 38 : speed === 'normal' ? 62 : 92;
+
+  const getTranslate = (x: number, y: number) => `translate3d(${x * cellSize}px, ${y * cellSize}px, 0)`;
 
   const getCellStyle = (x: number, y: number): React.CSSProperties => ({
     position: 'absolute',
-    left: x * cellSize,
-    top: y * cellSize,
+    left: 0,
+    top: 0,
     width: cellSize,
     height: cellSize,
-    borderRadius: Math.max(4, Math.floor(cellSize * 0.28)),
-    transitionProperty: 'left, top, transform, opacity',
-    transitionDuration: '120ms',
+    borderRadius: Math.max(3, Math.floor(cellSize * 0.16)),
+    transform: getTranslate(x, y),
+    transitionProperty: 'transform, opacity',
+    transitionDuration: `${moveDuration}ms`,
     transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-    willChange: 'left, top',
+    willChange: 'transform',
   });
 
   const isInLightRadius = (x: number, y: number): boolean => {
@@ -62,44 +66,30 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
 
   return (
     <div
-      className={`relative mx-auto overflow-hidden rounded-[2rem] border-[6px] ${
+      className={`relative mx-auto overflow-hidden rounded-lg border-[6px] ${
         theme === 'dark'
-          ? 'border-[#3a3f50] bg-[#171a24] shadow-[0_10px_0_0_#0f1119,0_24px_50px_rgba(0,0,0,0.35)]'
-          : 'border-[#f0c89f] bg-[#fffdf9] shadow-[0_10px_0_0_#eabf94,0_24px_50px_rgba(68,41,0,0.25)]'
+          ? 'border-[#20351a] bg-[#8ec043] shadow-[0_10px_0_0_#111d0e,0_24px_50px_rgba(0,0,0,0.38)]'
+          : 'border-[#5f9f38] bg-[#aad751] shadow-[0_10px_0_0_#497a2a,0_24px_50px_rgba(53,86,21,0.22)]'
       }`}
       style={{ width: boardWidth, height: boardHeight }}
     >
       <div
         className="absolute inset-0"
         style={{
-          background:
-            theme === 'dark'
-              ? 'linear-gradient(180deg, #1f2330 0%, #161925 100%)'
-              : 'linear-gradient(180deg, #fffdf9 0%, #fff4e7 100%)',
+          backgroundColor: theme === 'dark' ? '#8ec043' : '#aad751',
+          backgroundImage: `linear-gradient(45deg, ${
+            theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.16)'
+          } 25%, transparent 25%, transparent 75%, ${
+            theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.16)'
+          } 75%), linear-gradient(45deg, ${
+            theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.16)'
+          } 25%, transparent 25%, transparent 75%, ${
+            theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.16)'
+          } 75%)`,
+          backgroundPosition: `0 0, ${cellSize}px ${cellSize}px`,
+          backgroundSize: `${cellSize * 2}px ${cellSize * 2}px`,
         }}
       />
-
-      {Array.from({ length: height }).map((_, y) =>
-        Array.from({ length: width }).map((__, x) => (
-          <div
-            key={`grid-${x}-${y}`}
-            className="absolute"
-            style={{
-              left: x * cellSize,
-              top: y * cellSize,
-              width: cellSize,
-              height: cellSize,
-              backgroundColor:
-                (x + y) % 2 === 0
-                  ? theme === 'dark'
-                    ? 'rgba(255,255,255,0.02)'
-                    : 'rgba(255,153,41,0.06)'
-                  : 'transparent',
-              opacity: isInLightRadius(x, y) ? 1 : 0.08,
-            }}
-          />
-        ))
-      )}
 
       {portals.map((portal, idx) => (
         <React.Fragment key={`portal-${idx}`}>
@@ -133,7 +123,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
             opacity: entity.type === 'gate' && !entity.active ? 0.35 : 1,
             border: '2px solid rgba(0,0,0,0.2)',
             boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.25), 0 2px 4px rgba(0,0,0,0.25)',
-            borderRadius: '12px',
+            borderRadius: '8px',
           }}
           className="flex items-center justify-center text-white text-[10px] font-black"
         >
@@ -169,11 +159,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
             key={`snake-${idx}`}
             style={{
               ...getCellStyle(segment.x, segment.y),
-              background: isHead ? 'linear-gradient(150deg, #5af08a 0%, #1ab75e 100%)' : 'linear-gradient(150deg, #47df7a 0%, #14934b 100%)',
-              border: isHead ? '2px solid rgba(0,90,36,0.8)' : '2px solid rgba(0,90,36,0.35)',
-              borderRadius: '9999px',
+              background: isHead ? 'linear-gradient(150deg, #4f8cff 0%, #2558c7 100%)' : 'linear-gradient(150deg, #4d7ee8 0%, #284fb0 100%)',
+              border: isHead ? '2px solid rgba(22,54,130,0.9)' : '2px solid rgba(22,54,130,0.42)',
+              borderRadius: Math.max(6, Math.floor(cellSize * 0.18)),
               opacity,
-              transform: isHead ? 'scale(1.06)' : 'scale(1)',
+              transform: `${getTranslate(segment.x, segment.y)} ${isHead ? 'scale(1.06)' : 'scale(1)'}`,
               boxShadow: shieldActive && isHead
                 ? '0 0 0 3px rgba(180,240,255,0.65),0 0 18px rgba(53,200,255,0.8)'
                 : '0 2px 6px rgba(0,0,0,0.2)',
@@ -194,10 +184,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
                   style={{ transform: `rotate(${getHeadRotation(snake.direction)}deg)` }}
                   draggable={false}
                 />
-                <div className="absolute inset-x-[24%] top-[10%] h-[18%] rounded-full bg-white/35" />
+                <div className="absolute inset-x-[18%] top-[10%] h-[18%] rounded-full bg-white/35" />
               </>
             ) : (
-              <div className="absolute inset-x-[20%] top-[12%] h-[20%] rounded-full bg-white/22" />
+              <div className="absolute inset-x-[18%] top-[12%] h-[18%] rounded-full bg-white/20" />
             )}
           </div>
         );
@@ -211,10 +201,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameData, settings, width,
               key={`snake2-${idx}`}
               style={{
                 ...getCellStyle(segment.x, segment.y),
-                background: isHead ? 'linear-gradient(150deg, #8bc5ff 0%, #387dde 100%)' : 'linear-gradient(150deg, #76b8ff 0%, #2f6fce 100%)',
+                background: isHead ? 'linear-gradient(150deg, #f2c14e 0%, #d48f23 100%)' : 'linear-gradient(150deg, #efb743 0%, #c17a1c 100%)',
                 border: '2px solid rgba(26,71,140,0.5)',
-                borderRadius: '9999px',
-                transform: isHead ? 'scale(1.05)' : 'scale(1)',
+                borderRadius: Math.max(6, Math.floor(cellSize * 0.18)),
+                transform: `${getTranslate(segment.x, segment.y)} ${isHead ? 'scale(1.05)' : 'scale(1)'}`,
                 zIndex: isHead ? 18 : 9,
               }}
             >
