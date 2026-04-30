@@ -24,3 +24,6 @@ Thumbs.db
 
 # local source packs copied into public/
 /supermario/
+
+# Local Netlify folder
+.netlify
