@@ -1,0 +1,182 @@
+/* PANTALLA DE INICIO */
+.menu-container{
+    display: flex;
+    align-items: center;
+    background-color: white;
+    height: 720px;
+    width: 1280px;
+    margin: auto;
+    overflow: hidden;
+    position: relative;
+}
+.menu__aside{
+    display: flex;
+    flex-direction: column;
+    justify-content:center;
+    background-color: rgb(255,230,244);
+    width: 22%;
+    height: 150%;
+    box-shadow: 2em 0em rgb(255,189,225);
+    border-radius: 50%;
+    position:relative;
+    z-index: 3;
+}
+.menu__aside p{
+    width: max-content;
+}
+
+.left{
+    background-color: rgb(255,230,244);
+    width: 3%;
+    position: absolute;
+    height:100%;
+}
+.botones{
+    position: relative;
+    left: 3em;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 0;
+    justify-content: flex-end;
+    line-height: 1em;
+}
+.inicio{
+    position: absolute;
+    display:block;
+    transition: left, top 2s;
+}
+.s{
+    height: 85%;
+    left: 30%;
+    top:100%;
+    z-index: 5;
+}
+.y{
+    height: 80%;
+    left: 36%;
+    top:100%;
+    z-index: 3;
+}
+.n{
+    height: 76%;
+    left: 51%;
+    top:100%;
+    z-index: 2;
+}
+.m{
+    height:120%;
+    left:59%;
+    top:100%;
+    z-index: 4;
+}
+.cuadro{
+        display:flex;
+        position: relative;
+        transform: rotate(45deg);
+        top: 15.5%;
+        left: -9%;
+        animation: lunares 1.8s linear infinite;
+}
+
+
+.lunar{
+    width: 4.2em;
+    height:4.2em;
+    border-radius: 50%;
+    background-color: rgb(255,230,244);
+    position: relative;
+    z-index: 0;
+    margin:3em;
+}
+@keyframes lunares {
+    100%{
+        top: -1%; 
+        left: -18%;
+    }
+}
+
+.logo img{
+    position: relative;
+    width: 31em;
+    top:-40em;
+    z-index: inherit;
+    transition: top 2s
+}
+
+
+
+/* Screen changes */
+.load-menu{
+    position: absolute;
+    width: 100%;
+    height: 60%;
+    display: flex;
+    justify-content:center;
+    background-color: transparent;
+}
+
+.load-flex-container{
+    flex-basis:70%;
+    display: flex
+}
+.load-holder{
+    height:100%;
+    width:33%
+}
+.load-div:nth-child(2){
+    margin-top: 20%
+}
+
+.load-div{
+    display:flex;
+    height: 38%;
+    width: 90%;
+    background-color: rgb(236,182,229);
+    margin-left: 5%;
+    justify-content: center;
+    align-items: flex-end;
+    position: relative;
+
+}
+.load-div span{
+    position: relative;
+    top: 11%;
+    color:#555
+}
+
+
+.load-hover:hover{
+    border: 5px solid white
+}
+
+.options-menu{
+    position:absolute;
+    width: 100%;
+    height: 40%;
+    display:flex;
+    justify-content:space-around;
+
+}
+
+.options-flex-spacer{
+    flex-basis:20%;
+}
+.options-flex-container{
+    position: relative;
+    z-index: 10;
+    padding-left: 5%;
+    flex-basis:40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+
+.corner-text{
+    -webkit-text-stroke: 3.2px rgb(187, 085, 153);
+    text-shadow: 3px 3px 1.5px rgb(187, 085, 153);
+    position: absolute;
+    z-index: 2000;
+    bottom: 72%;
+    font-size: 300%!important;
+}

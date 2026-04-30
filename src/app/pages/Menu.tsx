@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, Bird, Gamepad2, Home, Play, Rabbit, Settings, Trophy } from 'lucide-react';
+import { ArrowRight, Bird, BookOpen, Gamepad2, Home, Play, Rabbit, Settings, Trophy } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { LaunchTimer } from '../components/LaunchTimer';
 import { ModeSelector } from '../components/ModeSelector';
@@ -102,6 +102,7 @@ export const Menu: React.FC = () => {
             <QuickRoute icon={Bird} title="Flappy" onClick={() => navigate('/flappy')} />
             <QuickRoute icon={Rabbit} title="Dino" onClick={() => navigate('/dino')} />
             <QuickRoute icon={Gamepad2} title="Retro Arcade" onClick={() => navigate('/arcade')} />
+            <QuickRoute icon={BookOpen} title="Doki Doki" onClick={() => navigate('/dokisecret')} />
             <Button onClick={handlePlayGame} className="mt-2 h-12 rounded-full bg-white text-[#11100f] hover:bg-[#f2c14e]">
               <Play className="h-4 w-4" />
               Start Selected

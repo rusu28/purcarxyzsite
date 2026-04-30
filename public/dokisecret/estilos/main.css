@@ -1,0 +1,270 @@
+/* configuraciones iniciales */
+@font-face {
+  font-family: 'Principal';
+  src: url('../fuentes/Aller_Rg.ttf') format('truetype');
+  font-style: normal;
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'Botones';
+  src: url('../fuentes/RifficFree-Bold.ttf') format('truetype');
+  font-style: italic;
+  font-weight: normal;
+}
+
+*{
+    box-sizing: border-box;
+    font-family: principal;
+}
+body{
+    padding: 20px;
+    background: black;
+    margin: 0;
+    border: none;
+}
+
+/* JUEGO PRINCIPAL */
+.screen{
+    transition: all .3;
+    position: relative; 
+    /* con el position relative, hago que el top o left de los absolute sea en torno a este */
+    background-image: url();
+    margin: auto;
+    height: 720px;
+    width: 1280px;
+    display: flex;
+    align-items:flex-end;
+    font-size: 26px;
+    justify-content: space-around;
+    overflow: hidden;
+    background-size: contain;
+}
+
+/* SCREEN TO SAVE OR LOAD */
+.save-screen {
+    display:flex;
+    position: absolute;
+    z-index: 1000;
+    font-size: 60%;
+    align-items: center;
+    background-color: white;
+    height: 100%;
+    width: 100%;
+    margin: auto;
+    overflow: hidden;
+}
+
+#aside-menu{
+    flex-basis:23%;
+}
+.lfx{
+    height: 60%;
+    margin-left: 5%
+}
+.load-div{
+    color: darkgrey!important;
+    background-size: cover;
+    position: relative;
+    z-index: 9999;
+}
+
+.options-btns{
+    top:18%
+}
+
+
+
+/* personajes. */ 
+.char{
+    height: 100%;
+    max-height: 90%;
+    max-width: 28%;
+    min-width: 0;
+    flex: 0 1 28%;
+    object-fit: contain;
+    object-position: bottom center;
+    position: relative;
+    top: 0%;
+    left: 0%;
+    margin: 0 -1.5%;
+    z-index: 3;
+    transition: top .2s linear, height .2s linear, left .5s linear, opacity .15s linear;
+        /* transition: top .4s;
+        transition: left .7s; */
+}
+.natsuki{
+    z-index:3;
+}
+.yuri{
+    z-index:3;
+}
+.natsuki{
+    z-index:3;
+}
+.monika{
+    z-index:3;
+}
+
+.fast{
+    transition: all .3s;
+}
+.jump-animation {
+    animation: jumping .3s linear;
+}
+@keyframes jumping{
+    50%{top:-3%}
+    100%{top:0%}
+}
+
+.together{
+    margin: 0 -10%
+}
+.hidden{
+    opacity:0 !important;
+}
+.none{
+    display:none !important
+}
+
+
+
+/* alert buttons */
+.alert-btn{
+    position: absolute;
+    align-self: center;
+    justify-self: center;
+    text-align: center;
+    padding: 1em;
+    /* font-size: 2em; */
+    max-width: 50%;
+    min-width: 30%;
+    background-color: rgb(255,230,244);
+    border: 3px solid rgb(255,189,225);
+    font-family: Principal;
+}
+
+
+.alert-btn p{
+    font-size: 1em;
+    color:black;
+}
+
+.ok{
+    color: white !important; 
+    font-family: Botones !important;
+    font-size: 200%;
+    -webkit-text-stroke: 2px rgb(187, 085, 153);
+    text-shadow: 2px 2px 1px rgb(187, 085, 153);
+    margin: .5em;
+}
+.ho:hover {
+    -webkit-text-stroke: 2px rgb(255, 170, 204);
+    text-shadow: 2px 2px 1px rgb(255, 170, 204);
+    cursor:pointer;
+}
+.marked{
+    -webkit-text-stroke: 2px rgb(255, 170, 204);
+    text-shadow: 2px 2px 1px rgb(255, 170, 204);   
+}
+
+.selection-container{
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    background-color:transparent;
+    width:100%;
+    height:100%;
+    padding-top: 12%;
+    z-index: 300
+}
+.selection-btn{
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 1.5%;
+    background-color: rgb(255, 230, 244);
+    border: .1em solid rgb(255, 189, 225);
+    color:black;
+    padding: 0.11% 4%;
+    width: 33%;
+}
+.selection-btn:hover{
+    background-color:#fff;
+    color:rgb(255, 170, 153)
+}
+
+/*  */
+
+.crosser{
+    background: black;
+    width: inherit;
+    height: inherit;
+    position: absolute;
+    left: -90%;
+    animation: crosser 1s linear;
+    z-index: 4;
+} 
+.white-screen{
+    background: white;
+    width: inherit;
+    height: inherit;
+    position: absolute;
+    animation: disapear .3s linear;
+}
+
+.char-bg{
+    width: inherit;
+    height: inherit;
+    position: absolute;
+    z-index: 4;
+}
+.char-bg-over{
+    z-index: 4!important;
+    transition: opacity 1s linear .1s;
+}
+.black{
+    animation: append 1s linear
+}
+
+@keyframes crosser {
+    100%{
+        left: 99%;
+    }
+}
+@keyframes disapear{
+    100%{
+        opacity: 0
+    }
+}
+@keyframes append {
+    0%{
+        opacity: 0;
+    }    
+    50%{opacity: .5}
+    100%{opacity: 1}
+}
+
+
+/* PRUEBAS */
+
+@media (max-height: 720px) {
+    .ok {
+        color: white !important;
+        font-family: Botones !important;
+        font-size: 200%;
+        -webkit-text-stroke: 1px rgb(187, 085, 153);
+        text-shadow: 1px 1px .5px rgb(187, 085, 153);
+        margin: .5em;
+    }
+    
+    .ho:hover {
+        -webkit-text-stroke: 1px rgb(255, 170, 204);
+        text-shadow: 1px 1px .5px rgb(255, 170, 204);
+        cursor: pointer;
+    }
+    
+    .marked {
+        -webkit-text-stroke: 1px rgb(255, 170, 204);
+        text-shadow: 1px 1px 5px rgb(255, 170, 204);
+    }
+}

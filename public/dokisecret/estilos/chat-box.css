@@ -1,0 +1,73 @@
+/* coso de texto */
+
+*{
+    color:white;
+}
+
+.text{  
+    width: 65%;
+    height: 20%;
+    position: absolute;
+    z-index: 10;
+    padding: .7em 2em;
+    font-family: principal;
+    text-shadow: -0.05em -0.05em .05em rgb(025, 0, 010), 0.05em 0.05em .05em rgb(025, 0, 010), -0.05em 0.05em .05em rgb(025, 0, 010), 0.05em -0.05em rgb(025, 0, 010);
+    -webkit-text-stroke: .01em rgb(025, 0, 010);
+    letter-spacing: -0.02em;
+    margin-bottom: .4em;
+    overflow: hidden;
+    border: 4px solid white;
+    border-radius: .7em;
+}
+.name{
+    width: 5em;
+    height: 1.5em;
+    background-color:white;
+    position: absolute;
+    bottom: 19%;
+    left: 20%;
+    border-radius: 10%;
+    box-shadow: inset 0 -0.2em 0.5em  rgb(94, 94, 94);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2em;
+    z-index: 6
+
+}
+.text-background{
+    position: absolute;
+    width: 65%;
+    height: 20%;
+    margin-bottom: .4em;
+    border-radius: .7em;
+    background-image: url("../imagenes/text-background.png");
+    background-repeat: repeat;
+    opacity: .85;
+    z-index: 5;
+    border: 4px solid white;
+}
+.options{
+    position: absolute;
+    z-index: 200;
+    bottom: 1.5%;
+    font-size: 0.7em;
+    display: flex;
+    width: 26%;
+    justify-content: space-around;
+}
+.option{
+    color: rgb(082, 055, 068);
+}
+.option:hover{
+    color: white;
+}
+
+.toggler{
+    display: none;
+}
+
+@media (max-height: 720px) {
+    .text{border: 1.5px solid white;}
+    .text-background{border: 1.5px solid white;}
+}

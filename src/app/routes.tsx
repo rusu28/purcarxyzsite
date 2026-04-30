@@ -11,6 +11,8 @@ import { Dino } from './pages/Dino';
 import { RetroArcade } from './pages/RetroArcade';
 import { RetroArcadePlayer } from './pages/RetroArcadePlayer';
 import { Alpha } from './pages/Alpha';
+import { Secret } from './pages/Secret';
+import { DokiSecret } from './pages/DokiSecret';
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +54,14 @@ export const router = createBrowserRouter([
   {
     path: '/alpha',
     element: <Alpha />,
+  },
+  {
+    path: '/secret',
+    element: <Secret />,
+  },
+  {
+    path: '/dokisecret',
+    element: <DokiSecret />,
   },
   {
     path: '*',
