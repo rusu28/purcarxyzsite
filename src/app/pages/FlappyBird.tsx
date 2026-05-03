@@ -7,9 +7,14 @@ import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 type Phase = 'ready' | 'playing' | 'crashed';
 
 type Viewport = {
+  screenWidth: number;
+  screenHeight: number;
   width: number;
   height: number;
   dpr: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
 };
 
 type Pipe = {
@@ -56,11 +61,27 @@ const BEST_SCORE_KEY = 'flappy-best-score';
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
-const getViewport = (): Viewport => ({
-  width: typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth),
-  height: typeof window === 'undefined' ? 720 : Math.max(420, window.innerHeight),
-  dpr: typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
-});
+const getViewport = (): Viewport => {
+  const screenWidth = typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth);
+  const screenHeight = typeof window === 'undefined' ? 720 : Math.max(420, window.innerHeight);
+  const portrait = screenHeight > screenWidth;
+  const width = portrait ? 720 : 1280;
+  const height = portrait ? 1280 : 720;
+  const scale = Math.max(screenWidth / width, screenHeight / height);
+  const offsetX = (screenWidth - width * scale) / 2;
+  const offsetY = screenHeight - height * scale;
+
+  return {
+    screenWidth,
+    screenHeight,
+    width,
+    height,
+    dpr: typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+    scale,
+    offsetX,
+    offsetY,
+  };
+};
 
 const getWorldMetrics = (viewport: Viewport, score: number, time: number) => {
   const { width, height } = viewport;
@@ -127,6 +148,32 @@ const makeAudio = () => {
   return { wing, point, hit, die, swoosh };
 };
 
+const drawRadiationSymbol = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color = '#facc15') => {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#111827';
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i += 1) {
+    ctx.save();
+    ctx.rotate(i * (Math.PI * 2 / 3) - Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.24);
+    ctx.arc(0, 0, radius * 0.82, -Math.PI * 0.34, Math.PI * 0.34);
+    ctx.lineTo(0, -radius * 0.24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+};
+
 export const FlappyBird: React.FC = () => {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -159,12 +206,6 @@ export const FlappyBird: React.FC = () => {
   const avatarImages = useMemo(makeImages, []);
   const audio = useMemo(makeAudio, []);
 
-  const bgImage = useMemo(() => {
-    const image = new Image();
-    image.src = '/assets/backgroundlandingpage.jpg';
-    return image;
-  }, []);
-
   const activeAvatar = useCallback(() => {
     const file = avatarSrc.split('/').pop();
     return avatarImages.find(image => image.src.includes(file ?? '')) ?? avatarImages[0];
@@ -180,11 +221,11 @@ export const FlappyBird: React.FC = () => {
     if (!canvas) return;
 
     viewportRef.current = getViewport();
-    const { width, height, dpr } = viewportRef.current;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    const { screenWidth, screenHeight, dpr } = viewportRef.current;
+    canvas.width = Math.floor(screenWidth * dpr);
+    canvas.height = Math.floor(screenHeight * dpr);
+    canvas.style.width = `${screenWidth}px`;
+    canvas.style.height = `${screenHeight}px`;
 
     if (phaseRef.current !== 'playing') {
       const world = getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current);
@@ -446,27 +487,51 @@ export const FlappyBird: React.FC = () => {
     };
 
     const drawBackground = (world: World, now: number) => {
-      const { dpr } = viewportRef.current;
+      const { dpr, offsetX, offsetY, scale, screenHeight, screenWidth } = viewportRef.current;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, world.width, world.height);
+      ctx.clearRect(0, 0, screenWidth, screenHeight);
+      ctx.fillStyle = '#05070b';
+      ctx.fillRect(0, 0, screenWidth, screenHeight);
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, offsetX * dpr, offsetY * dpr);
 
       const sky = ctx.createLinearGradient(0, 0, 0, world.height);
-      sky.addColorStop(0, '#70c7df');
-      sky.addColorStop(0.56, '#d9f3df');
-      sky.addColorStop(1, '#f7d08a');
+      sky.addColorStop(0, '#08111f');
+      sky.addColorStop(0.45, '#172339');
+      sky.addColorStop(1, '#3a2a18');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, world.width, world.height);
 
-      if (bgImage.complete) {
-        ctx.globalAlpha = 0.18;
-        ctx.drawImage(bgImage, 0, 0, world.width, world.height);
-        ctx.globalAlpha = 1;
+      const glow = ctx.createRadialGradient(world.width * 0.58, world.height * 0.42, 20, world.width * 0.58, world.height * 0.42, world.width * 0.52);
+      glow.addColorStop(0, 'rgba(250, 204, 21, 0.22)');
+      glow.addColorStop(0.36, 'rgba(125, 211, 252, 0.12)');
+      glow.addColorStop(1, 'rgba(8, 17, 31, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1;
+      const grid = 64;
+      const gridOffset = (now * 0.018) % grid;
+      for (let x = -grid; x < world.width + grid; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x - gridOffset, 0);
+        ctx.lineTo(x - gridOffset + world.height * 0.32, world.height);
+        ctx.stroke();
       }
+      for (let y = 0; y < world.height; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + gridOffset * 0.4);
+        ctx.lineTo(world.width, y + gridOffset * 0.4);
+        ctx.stroke();
+      }
+      ctx.restore();
 
       cloudsRef.current.forEach(cloud => {
         ctx.save();
-        ctx.globalAlpha = cloud.alpha;
-        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = cloud.alpha * 0.9;
+        ctx.fillStyle = '#7dd3fc';
         ctx.beginPath();
         ctx.ellipse(cloud.x, cloud.y, cloud.width * 0.42, cloud.width * 0.16, 0, 0, Math.PI * 2);
         ctx.ellipse(cloud.x + cloud.width * 0.26, cloud.y + 4, cloud.width * 0.34, cloud.width * 0.13, 0, 0, Math.PI * 2);
@@ -476,7 +541,7 @@ export const FlappyBird: React.FC = () => {
       });
 
       const mountainOffset = (now * 0.012) % Math.max(1, world.width);
-      ctx.fillStyle = 'rgba(24, 89, 82, 0.26)';
+      ctx.fillStyle = 'rgba(8, 14, 27, 0.64)';
       for (let i = -1; i < 7; i += 1) {
         const x = i * (world.width / 4) - mountainOffset;
         ctx.beginPath();
@@ -486,6 +551,11 @@ export const FlappyBird: React.FC = () => {
         ctx.closePath();
         ctx.fill();
       }
+
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      drawRadiationSymbol(ctx, world.width * 0.78, world.height * 0.2, clamp(world.width * 0.055, 38, 72), '#facc15');
+      ctx.restore();
     };
 
     const drawPipe = (world: World, pipe: Pipe) => {
@@ -495,28 +565,36 @@ export const FlappyBird: React.FC = () => {
       const cap = Math.min(22, pipe.width * 0.22);
 
       const gradient = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipe.width, 0);
-      gradient.addColorStop(0, '#0f7a5b');
-      gradient.addColorStop(0.5, '#18b66f');
-      gradient.addColorStop(1, '#07553d');
+      gradient.addColorStop(0, '#1f2937');
+      gradient.addColorStop(0.36, '#64748b');
+      gradient.addColorStop(0.52, '#facc15');
+      gradient.addColorStop(1, '#111827');
       ctx.fillStyle = gradient;
       ctx.fillRect(pipe.x, 0, pipe.width, topHeight);
       ctx.fillRect(pipe.x, bottomY, pipe.width, bottomHeight);
 
-      ctx.fillStyle = '#073b2d';
+      ctx.fillStyle = '#0f172a';
       ctx.fillRect(pipe.x - 8, topHeight - cap, pipe.width + 16, cap);
       ctx.fillRect(pipe.x - 8, bottomY, pipe.width + 16, cap);
-      ctx.fillStyle = 'rgba(255,255,255,0.24)';
+      ctx.fillStyle = 'rgba(250,204,21,0.42)';
       ctx.fillRect(pipe.x + pipe.width * 0.18, 0, Math.max(4, pipe.width * 0.08), Math.max(0, topHeight - cap));
       ctx.fillRect(pipe.x + pipe.width * 0.18, bottomY + cap, Math.max(4, pipe.width * 0.08), Math.max(0, bottomHeight - cap));
+      ctx.fillStyle = '#111827';
+      for (let y = 18; y < topHeight - cap; y += 42) {
+        ctx.fillRect(pipe.x + pipe.width * 0.1, y, pipe.width * 0.8, 5);
+      }
+      for (let y = bottomY + cap + 18; y < world.height - world.groundHeight; y += 42) {
+        ctx.fillRect(pipe.x + pipe.width * 0.1, y, pipe.width * 0.8, 5);
+      }
     };
 
     const drawForeground = (world: World, now: number) => {
       const groundY = world.height - world.groundHeight;
-      ctx.fillStyle = '#b98645';
+      ctx.fillStyle = '#6b4a24';
       ctx.fillRect(0, groundY, world.width, world.groundHeight);
-      ctx.fillStyle = '#7c4b2b';
+      ctx.fillStyle = '#facc15';
       ctx.fillRect(0, groundY, world.width, 8);
-      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.48)';
       const tileOffset = (now * world.pipeSpeed * 0.00025) % 40;
       for (let x = -40; x < world.width + 40; x += 40) {
         ctx.fillRect(x - tileOffset, groundY + 18, 18, 4);
@@ -586,11 +664,15 @@ export const FlappyBird: React.FC = () => {
       ringsRef.current.forEach(ring => {
         ctx.save();
         ctx.translate(ring.x, ring.y + Math.sin(ring.phase) * 8);
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 18;
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.arc(0, 0, ring.radius, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.shadowBlur = 0;
+        drawRadiationSymbol(ctx, 0, 0, ring.radius * 0.56, '#fde047');
         ctx.strokeStyle = 'rgba(255,255,255,0.7)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -629,12 +711,12 @@ export const FlappyBird: React.FC = () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
     };
-  }, [activeAvatar, audio.die, audio.hit, audio.point, bgImage, finishRun, playSound, spawnParticles, spawnPipe]);
+  }, [activeAvatar, audio.die, audio.hit, audio.point, finishRun, playSound, spawnParticles, spawnPipe]);
 
   const startButtonLabel = phase === 'crashed' ? 'Restart' : 'Launch';
 
   return (
-    <main className="relative min-h-[100dvh] overflow-hidden bg-[#071419] text-white">
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#05070b] text-white">
       <canvas
         ref={canvasRef}
         onPointerDown={event => {

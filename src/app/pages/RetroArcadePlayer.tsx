@@ -348,7 +348,7 @@ const ArcadeTouchControls: React.FC<{ iframeRef: React.RefObject<HTMLIFrameEleme
       </div>
 
       <div className="grid gap-3 pb-2">
-        <button aria-label="Action A" className="arcade-control-press h-12 w-12 rounded-full bg-[#83e377] font-black text-[#10220e] shadow-[0_5px_0_#3d8e35] active:translate-y-1 active:shadow-[0_2px_0_#3d8e35] sm:h-14 sm:w-14" {...bindPress('a')}>
+        <button aria-label="Action A" className="arcade-control-press h-12 w-12 rounded-full bg-[#7dd3fc] font-black text-[#06141c] shadow-[0_5px_0_#0369a1] active:translate-y-1 active:shadow-[0_2px_0_#0369a1] sm:h-14 sm:w-14" {...bindPress('a')}>
           A
         </button>
         <button aria-label="Action B" className="arcade-control-press h-12 w-12 rounded-full bg-white font-black text-[#11100f] shadow-[0_5px_0_#9ca3af] active:translate-y-1 active:shadow-[0_2px_0_#9ca3af] sm:h-14 sm:w-14" {...bindPress('b')}>

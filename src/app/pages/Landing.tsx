@@ -151,10 +151,10 @@ export const Landing: React.FC = () => {
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,16,15,0.88),rgba(17,16,15,0.48))]" />
             <div className="absolute inset-0 qual-flow-grid opacity-35" />
             <div className="relative z-10 flex h-full min-h-[320px] flex-col justify-end p-6 sm:p-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#83e377] text-[#10220e]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#7dd3fc] text-[#06141c]">
                 <Bot className="h-6 w-6" />
               </div>
-              <p className="mt-6 text-sm font-black uppercase tracking-[0.2em] text-[#83e377]">Purcar Alpha</p>
+              <p className="mt-6 text-sm font-black uppercase tracking-[0.2em] text-[#7dd3fc]">Purcar Alpha</p>
               <h2 className="mt-3 max-w-lg text-3xl font-black leading-tight sm:text-5xl">Ask Purcar Alpha soon.</h2>
             </div>
           </div>
@@ -189,7 +189,7 @@ export const Landing: React.FC = () => {
 
             <Button
               onClick={() => navigate('/alpha')}
-              className="mt-6 h-11 rounded-full bg-[#83e377] px-5 text-[#10220e] hover:bg-[#a7f39f]"
+              className="mt-6 h-11 rounded-full bg-[#7dd3fc] px-5 text-[#06141c] hover:bg-[#bae6fd]"
             >
               Open Alpha Preview
               <ArrowRight className="h-4 w-4" />
@@ -202,7 +202,7 @@ export const Landing: React.FC = () => {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#83e377]">Game selector</p>
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#7dd3fc]">Game selector</p>
               <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight text-white sm:text-5xl">
                 Choose a game from a clean arcade catalog.
               </h2>
@@ -312,8 +312,8 @@ const Metric: React.FC<{ value: string; label: string }> = ({ value, label }) =>
 );
 
 const ChatBubble: React.FC<{ label: string; text: string; active?: boolean }> = ({ label, text, active = false }) => (
-  <div className={`rounded-lg border p-4 ${active ? 'border-[#83e377]/40 bg-[#83e377]/10' : 'border-white/10 bg-black/25'}`}>
-    <div className={`text-xs font-black uppercase tracking-[0.16em] ${active ? 'text-[#83e377]' : 'text-white/45'}`}>
+  <div className={`rounded-lg border p-4 ${active ? 'border-[#7dd3fc]/40 bg-[#7dd3fc]/10' : 'border-white/10 bg-black/25'}`}>
+    <div className={`text-xs font-black uppercase tracking-[0.16em] ${active ? 'text-[#7dd3fc]' : 'text-white/45'}`}>
       {label}
     </div>
     <p className="mt-2 leading-7 text-white/78">{text}</p>
@@ -327,7 +327,7 @@ const QuickLaunch: React.FC<{
   onClick: () => void;
 }> = ({ icon: Icon, title, body, onClick }) => (
   <button type="button" onClick={onClick} className="group bg-[#191817] px-5 py-5 text-left transition-colors hover:bg-[#22201e]">
-    <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#11100f] transition-colors group-hover:bg-[#83e377]">
+    <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#11100f] transition-colors group-hover:bg-[#7dd3fc]">
       <Icon className="h-5 w-5" />
     </span>
     <h2 className="text-xl font-black text-white">{title}</h2>
@@ -337,7 +337,7 @@ const QuickLaunch: React.FC<{
 
 const CountdownTile: React.FC<{ value: string; label: string }> = ({ value, label }) => (
   <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-center">
-    <div className="font-mono text-3xl font-black text-[#83e377]">{value}</div>
+    <div className="font-mono text-3xl font-black text-[#7dd3fc]">{value}</div>
     <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-white/50">{label}</div>
   </div>
 );

@@ -79,7 +79,7 @@ export const Settings: React.FC = () => {
 
         <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
           <div>
-            <p className="qual-reveal text-sm font-black uppercase tracking-[0.2em] text-[#83e377]">Control panel</p>
+            <p className="qual-reveal text-sm font-black uppercase tracking-[0.2em] text-[#7dd3fc]">Control panel</p>
             <h1 className="qual-reveal qual-reveal-delay-1 mt-3 max-w-3xl text-3xl font-black leading-tight sm:text-5xl lg:text-6xl">
               Game Settings
             </h1>
@@ -115,7 +115,7 @@ export const Settings: React.FC = () => {
 
             <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 p-4">
               <div className="flex items-center gap-3">
-                {settings.soundEnabled ? <Volume2 className="h-5 w-5 text-[#83e377]" /> : <VolumeX className="h-5 w-5 text-white/40" />}
+                {settings.soundEnabled ? <Volume2 className="h-5 w-5 text-[#7dd3fc]" /> : <VolumeX className="h-5 w-5 text-white/40" />}
                 <Label htmlFor="sound" className="text-white">Sound Effects</Label>
               </div>
               <Switch id="sound" checked={settings.soundEnabled} onCheckedChange={checked => updateSetting('soundEnabled', checked)} />

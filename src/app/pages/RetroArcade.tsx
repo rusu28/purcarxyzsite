@@ -236,7 +236,7 @@ export const RetroArcade: React.FC = () => {
 
         <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
           <div>
-            <div className="qual-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#83e377]">
+            <div className="qual-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#7dd3fc]">
               <Sparkles className="h-3.5 w-3.5" />
               {catalog.length} playable routes
             </div>
@@ -315,7 +315,7 @@ export const RetroArcade: React.FC = () => {
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_420px] lg:items-end">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#83e377]">Catalog</p>
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#7dd3fc]">Catalog</p>
               <h2 className="mt-2 text-3xl font-black">{filteredTiles.length} games found</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">

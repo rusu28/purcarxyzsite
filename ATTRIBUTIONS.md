@@ -3,3 +3,5 @@
 This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
 
 This project includes a static browser build adapted from [elRomanoff/doki-doki](https://github.com/elRomanoff/doki-doki), licensed as ISC in its package metadata. Doki Doki Literature Club is originally by Dan Salvato / Team Salvato.
+
+This project includes a custom radiation warning SVG inspired by the public-domain radiation symbol commonly distributed through Wikimedia Commons.

@@ -9,7 +9,7 @@ const promptChips = ['Build me a game idea', 'Explain my code', 'Plan my day', '
 const statusItems = [
   { label: 'Access', value: 'Locked', tone: 'text-[#f2c14e]' },
   { label: 'Launch', value: LAUNCH_DATE_LABEL, tone: 'text-white' },
-  { label: 'Mode', value: 'AI Chat', tone: 'text-[#83e377]' },
+  { label: 'Mode', value: 'AI Chat', tone: 'text-[#7dd3fc]' },
   { label: 'King', value: 'Charging', tone: 'text-[#ff6b4a]' },
 ] as const;
 
@@ -30,7 +30,7 @@ export const Alpha: React.FC = () => {
           </Button>
 
           <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em]">
-            <Bot className="h-5 w-5 text-[#83e377]" />
+            <Bot className="h-5 w-5 text-[#7dd3fc]" />
             <span className="hidden sm:inline">Purcar Alpha</span>
           </div>
 
@@ -49,7 +49,7 @@ export const Alpha: React.FC = () => {
 
         <div className="relative z-10 mx-auto grid min-h-[calc(100svh-144px)] max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:px-8">
           <div className="max-w-3xl">
-            <div className="qual-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-[#83e377]/30 bg-[#83e377]/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#83e377]">
+            <div className="qual-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-[#7dd3fc]/30 bg-[#7dd3fc]/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#7dd3fc]">
               <Sparkles className="h-3.5 w-3.5" />
               Alpha preview
             </div>
@@ -87,7 +87,7 @@ export const Alpha: React.FC = () => {
           <section className="qual-panel qual-reveal qual-reveal-delay-2 overflow-hidden rounded-lg border border-white/10 bg-[#15191c]/92 shadow-2xl shadow-black/40">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-black/28 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#83e377] text-[#10220e]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7dd3fc] text-[#06141c]">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
@@ -157,7 +157,7 @@ export const Alpha: React.FC = () => {
 
 const CountdownTile: React.FC<{ value: string; label: string }> = ({ value, label }) => (
   <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-center backdrop-blur">
-    <div className="font-mono text-3xl font-black text-[#83e377]">{value}</div>
+    <div className="font-mono text-3xl font-black text-[#7dd3fc]">{value}</div>
     <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-white/50">{label}</div>
   </div>
 );
@@ -194,18 +194,18 @@ const AlphaTypingMessages: React.FC = () => {
 };
 
 const AlphaTypingBubble: React.FC<{ text: string }> = ({ text }) => (
-  <div className="rounded-lg border border-[#83e377]/35 bg-[#83e377]/10 p-4">
-    <div className="text-xs font-black uppercase tracking-[0.16em] text-[#83e377]">Purcar Alpha</div>
+  <div className="rounded-lg border border-[#7dd3fc]/35 bg-[#7dd3fc]/10 p-4">
+    <div className="text-xs font-black uppercase tracking-[0.16em] text-[#7dd3fc]">Purcar Alpha</div>
     <p className="mt-2 min-h-7 leading-7 text-white/75">
       {text}
-      <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-[#83e377] align-middle" />
+      <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-[#7dd3fc] align-middle" />
     </p>
   </div>
 );
 
 const AlphaBubble: React.FC<{ label: string; text: string; active?: boolean }> = ({ label, text, active = false }) => (
-  <div className={`rounded-lg border p-4 ${active ? 'border-[#83e377]/35 bg-[#83e377]/10' : 'border-white/10 bg-black/25'}`}>
-    <div className={`text-xs font-black uppercase tracking-[0.16em] ${active ? 'text-[#83e377]' : 'text-white/45'}`}>
+  <div className={`rounded-lg border p-4 ${active ? 'border-[#7dd3fc]/35 bg-[#7dd3fc]/10' : 'border-white/10 bg-black/25'}`}>
+    <div className={`text-xs font-black uppercase tracking-[0.16em] ${active ? 'text-[#7dd3fc]' : 'text-white/45'}`}>
       {label}
     </div>
     <p className="mt-2 leading-7 text-white/75">{text}</p>

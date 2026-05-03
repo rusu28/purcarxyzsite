@@ -277,7 +277,7 @@ export const HighScores: React.FC = () => {
 
         <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
           <div>
-            <p className="qual-reveal text-sm font-black uppercase tracking-[0.2em] text-[#83e377]">Scores</p>
+            <p className="qual-reveal text-sm font-black uppercase tracking-[0.2em] text-[#7dd3fc]">Scores</p>
             <h1 className="qual-reveal qual-reveal-delay-1 mt-3 max-w-3xl text-3xl font-black leading-tight sm:text-5xl lg:text-6xl">
               All Games Leaderboard
             </h1>

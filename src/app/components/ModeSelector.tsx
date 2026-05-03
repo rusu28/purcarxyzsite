@@ -39,19 +39,19 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ selectedMode, onSele
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#83e377]">Beginner</h2>
+        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#7dd3fc]">Beginner</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">{beginnerModes.map(renderModeCard)}</div>
       </div>
       <div>
-        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#83e377]">Intermediate</h2>
+        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#7dd3fc]">Intermediate</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">{intermediateModes.map(renderModeCard)}</div>
       </div>
       <div>
-        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#83e377]">Advanced</h2>
+        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#7dd3fc]">Advanced</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">{advancedModes.map(renderModeCard)}</div>
       </div>
       <div>
-        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#83e377]">Expert</h2>
+        <h2 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-[#7dd3fc]">Expert</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">{expertModes.map(renderModeCard)}</div>
       </div>
     </div>

@@ -1,17 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Gauge, RefreshCcw, Shield, Zap } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, BatteryCharging, Gauge, RefreshCcw, Shield, Zap } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
 type Phase = 'ready' | 'running' | 'crashed';
-type ObstacleKind = 'cactus' | 'rock' | 'bird' | 'double';
-type PickupKind = 'coin' | 'shield';
+type ObstacleKind = 'cactus' | 'rock' | 'bird' | 'double' | 'drone';
+type PickupKind = 'coin' | 'shield' | 'cell';
 
 type Viewport = {
+  screenWidth: number;
+  screenHeight: number;
   width: number;
   height: number;
   dpr: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
 };
 
 type Runner = {
@@ -22,6 +27,9 @@ type Runner = {
   jumpsLeft: number;
   coyote: number;
   jumpBuffer: number;
+  slide: number;
+  slideCooldown: number;
+  slam: boolean;
   shield: number;
 };
 
@@ -67,11 +75,27 @@ const BEST_KEY = 'dino-best-score';
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
-const getViewport = (): Viewport => ({
-  width: typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth),
-  height: typeof window === 'undefined' ? 720 : Math.max(420, window.innerHeight),
-  dpr: typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
-});
+const getViewport = (): Viewport => {
+  const screenWidth = typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth);
+  const screenHeight = typeof window === 'undefined' ? 720 : Math.max(420, window.innerHeight);
+  const portrait = screenHeight > screenWidth;
+  const width = portrait ? 720 : 1280;
+  const height = portrait ? 1280 : 720;
+  const scale = Math.max(screenWidth / width, screenHeight / height);
+  const offsetX = (screenWidth - width * scale) / 2;
+  const offsetY = screenHeight - height * scale;
+
+  return {
+    screenWidth,
+    screenHeight,
+    width,
+    height,
+    dpr: typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+    scale,
+    offsetX,
+    offsetY,
+  };
+};
 
 const getWorldMetrics = (viewport: Viewport, score: number) => {
   const { width, height } = viewport;
@@ -117,6 +141,32 @@ const circleRectOverlap = (x: number, y: number, r: number, rect: { x: number; y
   return dx * dx + dy * dy < r * r;
 };
 
+const drawRadiationSymbol = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color = '#facc15') => {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#111827';
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i += 1) {
+    ctx.save();
+    ctx.rotate(i * (Math.PI * 2 / 3) - Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.24);
+    ctx.arc(0, 0, radius * 0.82, -Math.PI * 0.34, Math.PI * 0.34);
+    ctx.lineTo(0, -radius * 0.24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+};
+
 export const Dino: React.FC = () => {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -125,13 +175,26 @@ export const Dino: React.FC = () => {
   const viewportRef = useRef<Viewport>(getViewport());
 
   const phaseRef = useRef<Phase>('ready');
-  const runnerRef = useRef<Runner>({ y: 0, vy: 0, crouching: false, jumpHeld: false, jumpsLeft: 1, coyote: 0, jumpBuffer: 0, shield: 0 });
+  const runnerRef = useRef<Runner>({
+    y: 0,
+    vy: 0,
+    crouching: false,
+    jumpHeld: false,
+    jumpsLeft: 1,
+    coyote: 0,
+    jumpBuffer: 0,
+    slide: 0,
+    slideCooldown: 0,
+    slam: false,
+    shield: 0,
+  });
   const obstaclesRef = useRef<Obstacle[]>([]);
   const pickupsRef = useRef<Pickup[]>([]);
   const dustRef = useRef<Dust[]>([]);
   const starsRef = useRef<Star[]>([]);
   const scoreRef = useRef(0);
   const bestRef = useRef(Number(localStorage.getItem(BEST_KEY) ?? '0'));
+  const energyRef = useRef(0);
   const spawnRef = useRef(0);
   const nextSpawnRef = useRef(1);
   const worldOffsetRef = useRef(0);
@@ -141,16 +204,11 @@ export const Dino: React.FC = () => {
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(bestRef.current);
   const [shield, setShield] = useState(0);
+  const [energy, setEnergy] = useState(0);
   const [speedLabel, setSpeedLabel] = useState('1.0x');
   const [avatarSrc, setAvatarSrc] = useState(() => resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
 
   const avatars = useMemo(makeImages, []);
-  const bgImage = useMemo(() => {
-    const image = new Image();
-    image.src = '/assets/backgroundlandingpage.jpg';
-    return image;
-  }, []);
-
   const activeAvatar = useCallback(() => {
     const file = avatarSrc.split('/').pop();
     return avatars.find(image => image.src.includes(file ?? '')) ?? avatars[0];
@@ -161,11 +219,11 @@ export const Dino: React.FC = () => {
     if (!canvas) return;
 
     viewportRef.current = getViewport();
-    const { width, height, dpr } = viewportRef.current;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    const { screenWidth, screenHeight, dpr } = viewportRef.current;
+    canvas.width = Math.floor(screenWidth * dpr);
+    canvas.height = Math.floor(screenHeight * dpr);
+    canvas.style.width = `${screenWidth}px`;
+    canvas.style.height = `${screenHeight}px`;
 
     if (phaseRef.current !== 'running') {
       const world = getWorldMetrics(viewportRef.current, scoreRef.current);
@@ -209,12 +267,16 @@ export const Dino: React.FC = () => {
       jumpsLeft: 1,
       coyote: 0,
       jumpBuffer: 0,
+      slide: 0,
+      slideCooldown: 0,
+      slam: false,
       shield: 0,
     };
     obstaclesRef.current = [];
     pickupsRef.current = [];
     dustRef.current = [];
     scoreRef.current = 0;
+    energyRef.current = 0;
     spawnRef.current = 0;
     nextSpawnRef.current = 0.92;
     worldOffsetRef.current = 0;
@@ -223,6 +285,7 @@ export const Dino: React.FC = () => {
     setPhase(nextPhase);
     setScore(0);
     setShield(0);
+    setEnergy(0);
     setSpeedLabel('1.0x');
     setAvatarSrc(resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
   }, [buildStars]);
@@ -255,8 +318,30 @@ export const Dino: React.FC = () => {
   const setCrouch = useCallback((enabled: boolean) => {
     startRun();
     const runner = runnerRef.current;
+    const world = getWorldMetrics(viewportRef.current, scoreRef.current);
+    const playerHeight = world.playerSize * (runner.slide > 0 ? 0.48 : runner.crouching ? 0.62 : 1);
+    const grounded = runner.y >= world.groundY - playerHeight - 2;
     runner.crouching = enabled;
-    if (enabled) addDust(getWorldMetrics(viewportRef.current, scoreRef.current).playerX, runner.y + 42, 4, '#caa26a');
+    if (!enabled) return;
+
+    if (!grounded) {
+      runner.slam = true;
+      runner.vy = Math.max(runner.vy, world.height * 1.28);
+      addDust(world.playerX + world.playerSize * 0.52, runner.y + world.playerSize * 0.92, 7, '#facc15');
+      return;
+    }
+
+    if (runner.slideCooldown <= 0) {
+      runner.slide = clamp(0.46 + energyRef.current * 0.006, 0.46, 0.72);
+      runner.slideCooldown = 0.64;
+      if (energyRef.current > 0) {
+        energyRef.current = Math.max(0, energyRef.current - 4);
+        setEnergy(Math.round(energyRef.current));
+      }
+      addDust(world.playerX + world.playerSize * 0.9, world.groundY - 8, 14, '#facc15');
+    } else {
+      addDust(world.playerX, runner.y + 42, 4, '#caa26a');
+    }
   }, [addDust, startRun]);
 
   const spawnObstacle = useCallback((world: World) => {
@@ -264,10 +349,19 @@ export const Dino: React.FC = () => {
     const roll = Math.random();
     let kind: ObstacleKind = 'cactus';
     if (scoreRef.current > 160 && roll > 0.72) kind = 'bird';
+    if (scoreRef.current > 230 && roll > 0.62 && roll < 0.78) kind = 'drone';
     if (scoreRef.current > 280 && roll > 0.88) kind = 'double';
     if (roll < 0.24) kind = 'rock';
 
     const baseX = world.width + 36;
+    if (kind === 'drone') {
+      const height = clamp(world.playerSize * 0.22, 18, 28);
+      const width = clamp(world.playerSize * 1.05, 64, 108);
+      const y = world.groundY - world.playerSize * 0.82;
+      obstaclesRef.current.push({ kind, x: baseX, y, width, height, phase: Math.random() * Math.PI * 2 });
+      return;
+    }
+
     if (kind === 'bird') {
       const height = clamp(world.playerSize * (0.36 + Math.random() * 0.18), 28, 48);
       const width = height * 1.55;
@@ -294,7 +388,7 @@ export const Dino: React.FC = () => {
 
     if (Math.random() < 0.34) {
       pickupsRef.current.push({
-        kind: Math.random() < 0.14 ? 'shield' : 'coin',
+        kind: Math.random() < 0.12 ? 'shield' : Math.random() < 0.5 ? 'cell' : 'coin',
         x: baseX + world.width * 0.18,
         y: world.groundY - world.playerSize * (1.05 + Math.random() * 0.65),
         radius: clamp(world.playerSize * 0.16, 10, 16),
@@ -373,7 +467,11 @@ export const Dino: React.FC = () => {
 
     const updateRunner = (world: World, dt: number) => {
       const runner = runnerRef.current;
-      const playerHeight = world.playerSize * (runner.crouching ? 0.62 : 1);
+      runner.slide = Math.max(0, runner.slide - dt);
+      runner.slideCooldown = Math.max(0, runner.slideCooldown - dt);
+
+      const sliding = runner.slide > 0;
+      const playerHeight = world.playerSize * (sliding ? 0.48 : runner.crouching ? 0.62 : 1);
       const groundPlayerY = world.groundY - playerHeight;
       const grounded = runner.y >= groundPlayerY - 0.5;
 
@@ -384,6 +482,8 @@ export const Dino: React.FC = () => {
         runner.jumpBuffer = 0;
         runner.coyote = 0;
         runner.crouching = false;
+        runner.slide = 0;
+        runner.slam = false;
         runner.vy = world.jump;
         runner.jumpsLeft = grounded ? 1 : Math.max(0, runner.jumpsLeft - 1);
         addDust(world.playerX + world.playerSize * 0.45, world.groundY - 8, 10, '#e8d8b4');
@@ -395,10 +495,29 @@ export const Dino: React.FC = () => {
       runner.y += runner.vy * dt;
 
       if (runner.y >= groundPlayerY) {
-        if (!grounded && runner.vy > world.height * 0.35) addDust(world.playerX + world.playerSize * 0.5, world.groundY - 6, 12, '#d2b48c');
+        if (!grounded && runner.vy > world.height * 0.35) addDust(world.playerX + world.playerSize * 0.5, world.groundY - 6, runner.slam ? 26 : 12, runner.slam ? '#facc15' : '#d2b48c');
         runner.y = groundPlayerY;
         runner.vy = 0;
         runner.jumpsLeft = 1;
+
+        if (runner.slam) {
+          const clearRange = world.playerSize * 2.35;
+          const before = obstaclesRef.current.length;
+          obstaclesRef.current = obstaclesRef.current.filter(obstacle => {
+            const center = obstacle.x + obstacle.width / 2;
+            const groundedObstacle = obstacle.y + obstacle.height > world.groundY - world.playerSize * 1.18;
+            return !(groundedObstacle && Math.abs(center - (world.playerX + world.playerSize * 0.5)) < clearRange);
+          });
+          const cleared = before - obstaclesRef.current.length;
+          if (cleared > 0) {
+            scoreRef.current += cleared * 45;
+            energyRef.current = clamp(energyRef.current + cleared * 14, 0, 100);
+            setScore(Math.floor(scoreRef.current));
+            setEnergy(Math.round(energyRef.current));
+            shakeRef.current = 0.22;
+          }
+          runner.slam = false;
+        }
       }
 
       runner.shield = Math.max(0, runner.shield - dt);
@@ -437,13 +556,14 @@ export const Dino: React.FC = () => {
       }
       setSpeedLabel(`${(1 + world.progress * 1.45).toFixed(1)}x`);
 
-      worldOffsetRef.current += world.speed * dt;
+      const runSpeed = world.speed * (runnerRef.current.slide > 0 ? 1.28 : 1);
+      worldOffsetRef.current += runSpeed * dt;
       spawnRef.current += dt;
       if (spawnRef.current >= nextSpawnRef.current) {
         spawnRef.current = 0;
         nextSpawnRef.current = clamp(world.spawnBase + (Math.random() - 0.5) * 0.28, 0.52, 1.26);
         const last = obstaclesRef.current[obstaclesRef.current.length - 1];
-        const minGap = world.speed * clamp(0.68 - world.progress * 0.12, 0.5, 0.68);
+        const minGap = runSpeed * clamp(0.68 - world.progress * 0.12, 0.5, 0.68);
         if (!last || world.width - (last.x + last.width) > minGap) spawnObstacle(world);
         else nextSpawnRef.current = 0.18;
       }
@@ -451,24 +571,26 @@ export const Dino: React.FC = () => {
       updateRunner(world, dt);
 
       obstaclesRef.current.forEach(obstacle => {
-        obstacle.x -= world.speed * dt;
+        obstacle.x -= runSpeed * dt;
         obstacle.phase += dt * 5.2;
         if (obstacle.kind === 'bird') obstacle.y += Math.sin(obstacle.phase) * dt * 28;
+        if (obstacle.kind === 'drone') obstacle.y += Math.sin(obstacle.phase) * dt * 18;
       });
       obstaclesRef.current = obstaclesRef.current.filter(obstacle => obstacle.x + obstacle.width > -40);
 
       pickupsRef.current.forEach(pickup => {
-        pickup.x -= world.speed * dt;
+        pickup.x -= runSpeed * dt;
         pickup.phase += dt * 4;
       });
 
       const runner = runnerRef.current;
       const crouch = runner.crouching;
+      const sliding = runner.slide > 0;
       const body = {
         x: world.playerX + world.playerSize * 0.12,
-        y: runner.y + world.playerSize * (crouch ? 0.24 : 0.1),
-        w: world.playerSize * 0.72,
-        h: world.playerSize * (crouch ? 0.42 : 0.78),
+        y: runner.y + world.playerSize * (sliding ? 0.34 : crouch ? 0.24 : 0.1),
+        w: world.playerSize * (sliding ? 0.9 : 0.72),
+        h: world.playerSize * (sliding ? 0.3 : crouch ? 0.42 : 0.78),
       };
 
       pickupsRef.current.forEach(pickup => {
@@ -482,8 +604,10 @@ export const Dino: React.FC = () => {
             addDust(pickup.x, pickupY, 18, '#93c5fd');
           } else {
             scoreRef.current += 35;
+            energyRef.current = clamp(energyRef.current + (pickup.kind === 'cell' ? 24 : 8), 0, 100);
             setScore(Math.floor(scoreRef.current));
-            addDust(pickup.x, pickupY, 14, '#facc15');
+            setEnergy(Math.round(energyRef.current));
+            addDust(pickup.x, pickupY, 14, pickup.kind === 'cell' ? '#7dd3fc' : '#facc15');
           }
         }
       });
@@ -495,25 +619,49 @@ export const Dino: React.FC = () => {
     };
 
     const drawBackground = (world: World) => {
-      const { dpr } = viewportRef.current;
+      const { dpr, offsetX, offsetY, scale, screenHeight, screenWidth } = viewportRef.current;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, world.width, world.height);
+      ctx.clearRect(0, 0, screenWidth, screenHeight);
+      ctx.fillStyle = '#05070b';
+      ctx.fillRect(0, 0, screenWidth, screenHeight);
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, offsetX * dpr, offsetY * dpr);
 
       const shake = shakeRef.current > 0 ? Math.sin(performance.now() * 0.08) * shakeRef.current * 14 : 0;
       ctx.translate(shake, 0);
 
       const sky = ctx.createLinearGradient(0, 0, 0, world.height);
-      sky.addColorStop(0, '#141924');
-      sky.addColorStop(0.48, '#31566a');
-      sky.addColorStop(1, '#b98257');
+      sky.addColorStop(0, '#070b14');
+      sky.addColorStop(0.5, '#1a2636');
+      sky.addColorStop(1, '#4a3219');
       ctx.fillStyle = sky;
       ctx.fillRect(-30, 0, world.width + 60, world.height);
 
-      if (bgImage.complete) {
-        ctx.globalAlpha = 0.16;
-        ctx.drawImage(bgImage, -30, 0, world.width + 60, world.height);
-        ctx.globalAlpha = 1;
+      const reactorGlow = ctx.createRadialGradient(world.width * 0.68, world.height * 0.4, 20, world.width * 0.68, world.height * 0.4, world.width * 0.58);
+      reactorGlow.addColorStop(0, 'rgba(250, 204, 21, 0.2)');
+      reactorGlow.addColorStop(0.36, 'rgba(125, 211, 252, 0.1)');
+      reactorGlow.addColorStop(1, 'rgba(7, 11, 20, 0)');
+      ctx.fillStyle = reactorGlow;
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1;
+      const grid = 76;
+      const offset = worldOffsetRef.current * 0.08 % grid;
+      for (let x = -grid; x < world.width + grid; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x - offset, 0);
+        ctx.lineTo(x - offset + world.height * 0.24, world.height);
+        ctx.stroke();
       }
+      for (let y = 0; y < world.height; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + offset * 0.4);
+        ctx.lineTo(world.width, y + offset * 0.4);
+        ctx.stroke();
+      }
+      ctx.restore();
 
       starsRef.current.forEach(star => {
         ctx.globalAlpha = star.alpha;
@@ -523,7 +671,7 @@ export const Dino: React.FC = () => {
       ctx.globalAlpha = 1;
 
       const farOffset = worldOffsetRef.current * 0.08;
-      ctx.fillStyle = 'rgba(41, 72, 59, 0.58)';
+      ctx.fillStyle = 'rgba(11, 18, 32, 0.74)';
       for (let i = -1; i < 8; i += 1) {
         const x = i * (world.width / 5) - (farOffset % (world.width / 5));
         ctx.beginPath();
@@ -535,21 +683,26 @@ export const Dino: React.FC = () => {
       }
 
       const nearOffset = worldOffsetRef.current * 0.42;
-      ctx.fillStyle = 'rgba(31, 81, 63, 0.78)';
+      ctx.fillStyle = 'rgba(27, 33, 45, 0.88)';
       for (let i = -1; i < 10; i += 1) {
         const x = i * (world.width / 6) - (nearOffset % (world.width / 6));
         ctx.beginPath();
         ctx.ellipse(x, world.groundY + 12, world.width * 0.11, 46, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      drawRadiationSymbol(ctx, world.width * 0.82, world.height * 0.22, clamp(world.width * 0.055, 38, 72), '#facc15');
+      ctx.restore();
     };
 
     const drawGround = (world: World) => {
-      ctx.fillStyle = '#7a5337';
+      ctx.fillStyle = '#5b3c21';
       ctx.fillRect(-30, world.groundY, world.width + 60, world.groundHeight);
-      ctx.fillStyle = '#4f3524';
+      ctx.fillStyle = '#facc15';
       ctx.fillRect(-30, world.groundY, world.width + 60, 8);
-      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.fillStyle = 'rgba(15,23,42,0.46)';
       const dash = worldOffsetRef.current % 52;
       for (let x = -52; x < world.width + 52; x += 52) {
         ctx.fillRect(x - dash, world.groundY + 20, 22, 4);
@@ -557,6 +710,27 @@ export const Dino: React.FC = () => {
     };
 
     const drawObstacle = (obstacle: Obstacle) => {
+      if (obstacle.kind === 'drone') {
+        ctx.save();
+        ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.roundRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height, 10);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-obstacle.width * 0.36, -3, obstacle.width * 0.72, 6);
+        ctx.fillStyle = '#7dd3fc';
+        ctx.beginPath();
+        ctx.arc(-obstacle.width * 0.34, 0, obstacle.height * 0.34, 0, Math.PI * 2);
+        ctx.arc(obstacle.width * 0.34, 0, obstacle.height * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
       if (obstacle.kind === 'bird') {
         ctx.save();
         ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
@@ -590,11 +764,11 @@ export const Dino: React.FC = () => {
         return;
       }
 
-      ctx.fillStyle = '#24492f';
+      ctx.fillStyle = '#1f2937';
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-      ctx.fillStyle = '#346c46';
+      ctx.fillStyle = '#64748b';
       ctx.fillRect(obstacle.x + obstacle.width * 0.22, obstacle.y + 7, obstacle.width * 0.28, obstacle.height - 7);
-      ctx.fillStyle = '#183521';
+      ctx.fillStyle = '#facc15';
       ctx.fillRect(obstacle.x - obstacle.width * 0.32, obstacle.y + obstacle.height * 0.36, obstacle.width * 0.42, obstacle.width * 0.22);
       ctx.fillRect(obstacle.x + obstacle.width * 0.9, obstacle.y + obstacle.height * 0.22, obstacle.width * 0.42, obstacle.width * 0.22);
     };
@@ -614,6 +788,17 @@ export const Dino: React.FC = () => {
         ctx.lineTo(-pickup.radius * 1.1, -pickup.radius * 0.32);
         ctx.closePath();
         ctx.fill();
+      } else if (pickup.kind === 'cell') {
+        ctx.shadowColor = '#7dd3fc';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(-pickup.radius * 0.62, -pickup.radius * 1.35, pickup.radius * 1.24, pickup.radius * 2.7, 6);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(-pickup.radius * 0.36, -pickup.radius, pickup.radius * 0.72, pickup.radius * 2);
+        drawRadiationSymbol(ctx, 0, 0, pickup.radius * 0.48, '#facc15');
       } else {
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
@@ -631,16 +816,17 @@ export const Dino: React.FC = () => {
     const drawRunner = (world: World) => {
       const runner = runnerRef.current;
       const crouch = runner.crouching;
+      const sliding = runner.slide > 0;
       const size = world.playerSize;
-      const height = size * (crouch ? 0.62 : 1);
-      const width = size * (crouch ? 1.12 : 0.86);
+      const height = size * (sliding ? 0.48 : crouch ? 0.62 : 1);
+      const width = size * (sliding ? 1.26 : crouch ? 1.12 : 0.86);
       const x = world.playerX;
-      const y = runner.y + (crouch ? size * 0.38 : 0);
+      const y = runner.y + (sliding ? size * 0.52 : crouch ? size * 0.38 : 0);
       const avatar = activeAvatar();
 
       ctx.save();
       ctx.translate(x + width / 2, y + height / 2);
-      ctx.rotate(clamp(runner.vy * 0.00045, -0.28, 0.32));
+      ctx.rotate(sliding ? -0.16 : runner.slam ? 0.34 : clamp(runner.vy * 0.00045, -0.28, 0.32));
 
       ctx.globalAlpha = 0.25;
       ctx.fillStyle = '#000000';
@@ -649,7 +835,7 @@ export const Dino: React.FC = () => {
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      ctx.fillStyle = runner.shield > 0 ? '#93c5fd' : '#f7d08a';
+      ctx.fillStyle = runner.shield > 0 ? '#93c5fd' : sliding ? '#facc15' : '#f7d08a';
       ctx.beginPath();
       ctx.roundRect(-width / 2, -height / 2, width, height, 12);
       ctx.fill();
@@ -680,6 +866,17 @@ export const Dino: React.FC = () => {
         ctx.arc(0, 0, Math.max(width, height) * 0.62, 0, Math.PI * 2);
         ctx.stroke();
         ctx.globalAlpha = 1;
+      }
+
+      if (runner.slam) {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.65, height * 0.2);
+        ctx.lineTo(-width * 1.1, height * 0.76);
+        ctx.moveTo(width * 0.65, height * 0.2);
+        ctx.lineTo(width * 1.1, height * 0.76);
+        ctx.stroke();
       }
 
       ctx.restore();
@@ -733,10 +930,10 @@ export const Dino: React.FC = () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
     };
-  }, [activeAvatar, addDust, bgImage, crash, spawnObstacle]);
+  }, [activeAvatar, addDust, crash, spawnObstacle]);
 
   return (
-    <main className="relative min-h-[100dvh] overflow-hidden bg-[#141924] text-white">
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#05070b] text-white">
       <canvas
         ref={canvasRef}
         onPointerDown={event => {
@@ -757,9 +954,10 @@ export const Dino: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 text-center sm:max-w-xl">
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 text-center sm:max-w-2xl">
             <HudStat icon={Gauge} label="Score" value={score} />
             <HudStat icon={Zap} label="Speed" value={speedLabel} />
+            <HudStat icon={BatteryCharging} label="Energy" value={`${energy}%`} />
             <HudStat icon={Shield} label="Shield" value={shield > 0 ? shield : '-'} />
           </div>
 

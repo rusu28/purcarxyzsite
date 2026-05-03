@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Radiation warning symbol">
+  <rect width="256" height="256" rx="24" fill="#facc15"/>
+  <circle cx="128" cy="128" r="19" fill="#111827"/>
+  <g fill="#111827">
+    <path d="M128 26a102 102 0 0 1 42 9l-29 74a22 22 0 0 0-26 0L86 35a102 102 0 0 1 42-9Z"/>
+    <path d="M224 169a102 102 0 0 1-73 58l-19-77a22 22 0 0 0 13-22l79-7a102 102 0 0 1 0 48Z"/>
+    <path d="M32 169a102 102 0 0 1 0-48l79 7a22 22 0 0 0 13 22l-19 77a102 102 0 0 1-73-58Z"/>
+  </g>
+</svg>
