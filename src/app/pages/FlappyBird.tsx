@@ -1,16 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Gauge, Play, RefreshCcw, Wind, Zap } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { loadStoredSettings, resolvePurcarAvatar } from '../utils/settings';
 
-type GamePhase = 'ready' | 'play' | 'gameover';
-
-type Pipe = {
-  x: number;
-  gapY: number;
-  passed: boolean;
-};
+type Phase = 'ready' | 'playing' | 'crashed';
 
 type Viewport = {
   width: number;
@@ -18,52 +12,152 @@ type Viewport = {
   dpr: number;
 };
 
-const BEST_SCORE_KEY = 'flappy-best-score';
+type Pipe = {
+  x: number;
+  gapY: number;
+  baseGapY: number;
+  width: number;
+  gap: number;
+  passed: boolean;
+  amp: number;
+  phase: number;
+  speed: number;
+};
 
+type Ring = {
+  x: number;
+  y: number;
+  radius: number;
+  collected: boolean;
+  phase: number;
+};
+
+type Particle = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+};
+
+type Cloud = {
+  x: number;
+  y: number;
+  width: number;
+  speed: number;
+  alpha: number;
+};
+
+type World = ReturnType<typeof getWorldMetrics>;
+
+const BEST_SCORE_KEY = 'flappy-best-score';
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+const getViewport = (): Viewport => ({
+  width: typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth),
+  height: typeof window === 'undefined' ? 720 : Math.max(420, window.innerHeight),
+  dpr: typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+});
+
+const getWorldMetrics = (viewport: Viewport, score: number, time: number) => {
+  const { width, height } = viewport;
+  const shortSide = Math.min(width, height);
+  const progress = clamp(score / 46 + time / 180, 0, 1);
+  const groundHeight = clamp(height * 0.145, 70, 145);
+  const birdRadius = clamp(shortSide * 0.042, 19, 35);
+  const birdX = clamp(width * 0.24, 86, 250);
+  const gravity = clamp(height * (1.95 + progress * 0.36), 1180, 2500);
+  const flap = -clamp(height * (0.74 + progress * 0.1), 460, 850);
+  const maxFall = clamp(height * 1.22, 640, 1280);
+  const pipeWidth = clamp(width * 0.075, 56, 112);
+  const pipeGap = clamp(height * (0.305 - progress * 0.055), 148, 265);
+  const pipeSpeed = clamp(width * (0.205 + progress * 0.105), 185, 520);
+  const spawnEvery = clamp(1.38 - progress * 0.25, 0.98, 1.38);
+  const liftDrag = 0.996 - progress * 0.01;
+  return { width, height, groundHeight, birdRadius, birdX, gravity, flap, maxFall, pipeWidth, pipeGap, pipeSpeed, spawnEvery, liftDrag, progress };
+};
+
+const circleRectHit = (
+  circleX: number,
+  circleY: number,
+  radius: number,
+  rectX: number,
+  rectY: number,
+  rectWidth: number,
+  rectHeight: number,
+) => {
+  const closestX = clamp(circleX, rectX, rectX + rectWidth);
+  const closestY = clamp(circleY, rectY, rectY + rectHeight);
+  const dx = circleX - closestX;
+  const dy = circleY - closestY;
+  return dx * dx + dy * dy < radius * radius;
+};
+
+const makeImages = () => {
+  const paths = [
+    '/assets/snake/head.png',
+    '/assets/snake/purcar2.jpeg',
+    '/assets/snake/purcar3.jpeg',
+    '/assets/snake/purcar4.jpeg',
+    '/assets/snake/purcar5.jpeg',
+    '/assets/snake/purcar6.jpeg',
+  ];
+
+  return paths.map(path => {
+    const image = new Image();
+    image.src = path;
+    return image;
+  });
+};
+
+const makeAudio = () => {
+  const wing = new Audio('/audio/sfx_wing.wav');
+  const point = new Audio('/audio/sfx_point.wav');
+  const hit = new Audio('/audio/sfx_hit.wav');
+  const die = new Audio('/audio/sfx_die.wav');
+  const swoosh = new Audio('/audio/sfx_swooshing.wav');
+  [wing, point, hit, die, swoosh].forEach(sound => {
+    sound.preload = 'auto';
+    sound.volume = 0.42;
+  });
+  point.volume = 0.55;
+  return { wing, point, hit, die, swoosh };
+};
 
 export const FlappyBird: React.FC = () => {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const viewportRef = useRef<Viewport>(getViewport());
 
-  const pipesRef = useRef<Pipe[]>([]);
+  const phaseRef = useRef<Phase>('ready');
+  const scoreRef = useRef(0);
+  const bestRef = useRef(Number(localStorage.getItem(BEST_SCORE_KEY) ?? '0'));
+  const timeRef = useRef(0);
   const birdYRef = useRef(0);
   const velocityRef = useRef(0);
-  const phaseRef = useRef<GamePhase>('ready');
-  const scoreRef = useRef(0);
-  const spawnTimerRef = useRef(0);
+  const tiltRef = useRef(0);
+  const spawnRef = useRef(0);
+  const comboRef = useRef(0);
+  const pipesRef = useRef<Pipe[]>([]);
+  const ringsRef = useRef<Ring[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
+  const cloudsRef = useRef<Cloud[]>([]);
+  const gustRef = useRef({ time: 0, force: 0 });
 
-  const viewportRef = useRef<Viewport>({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
-    height: typeof window !== 'undefined' ? window.innerHeight : 720,
-    dpr: typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1,
-  });
-
-  const [phase, setPhase] = useState<GamePhase>('ready');
+  const [phase, setPhase] = useState<Phase>('ready');
   const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState<number>(() => Number(localStorage.getItem(BEST_SCORE_KEY) ?? '0'));
-  const [selectedPurcar, setSelectedPurcar] = useState(() => {
-    const settings = loadStoredSettings();
-    return resolvePurcarAvatar(settings.purcarAvatar, Date.now());
-  });
+  const [bestScore, setBestScore] = useState(bestRef.current);
+  const [combo, setCombo] = useState(0);
+  const [gust, setGust] = useState(0);
+  const [avatarSrc, setAvatarSrc] = useState(() => resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
 
-  const birdImages = useMemo(() => {
-    const imagePaths = [
-      '/assets/snake/head.png',
-      '/assets/snake/purcar2.jpeg',
-      '/assets/snake/purcar3.jpeg',
-      '/assets/snake/purcar4.jpeg',
-      '/assets/snake/purcar5.jpeg',
-      '/assets/snake/purcar6.jpeg',
-    ];
-    return imagePaths.map(path => {
-      const image = new Image();
-      image.src = path;
-      return image;
-    });
-  }, []);
+  const avatarImages = useMemo(makeImages, []);
+  const audio = useMemo(makeAudio, []);
 
   const bgImage = useMemo(() => {
     const image = new Image();
@@ -71,286 +165,544 @@ export const FlappyBird: React.FC = () => {
     return image;
   }, []);
 
-  const sfx = useMemo(() => {
-    const wing = new Audio('/audio/sfx_wing.wav');
-    const point = new Audio('/audio/sfx_point.wav');
-    const hit = new Audio('/audio/sfx_hit.wav');
-    const die = new Audio('/audio/sfx_die.wav');
-    const swoosh = new Audio('/audio/sfx_swooshing.wav');
-    return { wing, point, hit, die, swoosh };
+  const activeAvatar = useCallback(() => {
+    const file = avatarSrc.split('/').pop();
+    return avatarImages.find(image => image.src.includes(file ?? '')) ?? avatarImages[0];
+  }, [avatarImages, avatarSrc]);
+
+  const playSound = useCallback((sound: HTMLAudioElement) => {
+    sound.currentTime = 0;
+    void sound.play().catch(() => {});
   }, []);
 
-  const getWorld = useCallback(() => {
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    viewportRef.current = getViewport();
+    const { width, height, dpr } = viewportRef.current;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    if (phaseRef.current !== 'playing') {
+      const world = getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current);
+      birdYRef.current = world.height * 0.38;
+    }
+  }, []);
+
+  const buildClouds = useCallback(() => {
     const { width, height } = viewportRef.current;
-    const groundHeight = clamp(height * 0.14, 76, 150);
-    const pipeWidth = clamp(width * 0.075, 62, 114);
-    const pipeGap = clamp(height * 0.27, 170, 280);
-    const birdSize = clamp(Math.min(width, height) * 0.075, 44, 76);
-    const birdX = clamp(width * 0.24, 90, 260);
-    const pipeSpeed = clamp(width * 0.26, 260, 560);
-    const gravity = clamp(height * 2.3, 1450, 2600);
-    const flap = -clamp(height * 0.95, 620, 980);
-    return { width, height, groundHeight, pipeWidth, pipeGap, birdSize, birdX, pipeSpeed, gravity, flap };
+    cloudsRef.current = Array.from({ length: 8 }, (_, index) => ({
+      x: Math.random() * width,
+      y: height * (0.08 + Math.random() * 0.32),
+      width: clamp(width * (0.1 + Math.random() * 0.08), 70, 180),
+      speed: clamp(width * (0.015 + Math.random() * 0.02), 14, 52),
+      alpha: 0.12 + Math.random() * 0.22,
+    }));
   }, []);
 
-  const resetGame = useCallback((nextPhase: GamePhase = 'ready') => {
-    const world = getWorld();
-    pipesRef.current = [];
-    birdYRef.current = world.height * 0.35;
-    velocityRef.current = 0;
-    scoreRef.current = 0;
-    spawnTimerRef.current = 0;
+  const reset = useCallback((nextPhase: Phase = 'ready') => {
+    const world = getWorldMetrics(viewportRef.current, 0, 0);
     phaseRef.current = nextPhase;
-    setScore(0);
+    scoreRef.current = 0;
+    comboRef.current = 0;
+    timeRef.current = 0;
+    spawnRef.current = world.spawnEvery * 0.55;
+    birdYRef.current = world.height * 0.38;
+    velocityRef.current = 0;
+    tiltRef.current = 0;
+    gustRef.current = { time: 1.6, force: 0 };
+    pipesRef.current = [];
+    ringsRef.current = [];
+    particlesRef.current = [];
+    buildClouds();
     setPhase(nextPhase);
-    const settings = loadStoredSettings();
-    setSelectedPurcar(resolvePurcarAvatar(settings.purcarAvatar, Date.now()));
-  }, [getWorld]);
+    setScore(0);
+    setCombo(0);
+    setGust(0);
+    setAvatarSrc(resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
+  }, [buildClouds]);
 
-  useEffect(() => {
-    resetGame('ready');
-  }, [resetGame]);
+  const spawnParticles = useCallback((x: number, y: number, color: string, count: number) => {
+    for (let i = 0; i < count; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 70 + Math.random() * 190;
+      particlesRef.current.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.45 + Math.random() * 0.35,
+        maxLife: 0.8,
+        color,
+      });
+    }
+  }, []);
 
-  const startOrFlap = useCallback(() => {
-    if (phaseRef.current === 'gameover') {
-      resetGame('ready');
-      sfx.swoosh.currentTime = 0;
-      void sfx.swoosh.play().catch(() => {});
+  const spawnPipe = useCallback((world: World) => {
+    const margin = Math.max(92, world.height * 0.13);
+    const playableBottom = world.height - world.groundHeight - margin;
+    const playableTop = margin;
+    const gapY = playableTop + Math.random() * Math.max(1, playableBottom - playableTop);
+    const moving = scoreRef.current > 5 && Math.random() < 0.42;
+    const pipe: Pipe = {
+      x: world.width + world.pipeWidth + 24,
+      gapY,
+      baseGapY: gapY,
+      width: world.pipeWidth,
+      gap: world.pipeGap,
+      passed: false,
+      amp: moving ? clamp(world.height * (0.035 + Math.random() * 0.04), 20, 58) : 0,
+      phase: Math.random() * Math.PI * 2,
+      speed: moving ? 1.25 + Math.random() * 1.2 : 0,
+    };
+    pipesRef.current.push(pipe);
+
+    if (Math.random() < 0.82) {
+      ringsRef.current.push({
+        x: pipe.x + pipe.width * 0.5,
+        y: pipe.gapY,
+        radius: clamp(world.birdRadius * 0.58, 13, 21),
+        collected: false,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }, []);
+
+  const finishRun = useCallback(() => {
+    if (phaseRef.current !== 'playing') return;
+    phaseRef.current = 'crashed';
+    setPhase('crashed');
+    comboRef.current = 0;
+    setCombo(0);
+    spawnParticles(getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current).birdX, birdYRef.current, '#ff6b6b', 18);
+    playSound(audio.hit);
+    window.setTimeout(() => playSound(audio.die), 80);
+  }, [audio.die, audio.hit, playSound, spawnParticles]);
+
+  const flap = useCallback((strong = false) => {
+    if (phaseRef.current === 'crashed') {
+      reset('ready');
+      playSound(audio.swoosh);
       return;
     }
 
     if (phaseRef.current === 'ready') {
-      phaseRef.current = 'play';
-      setPhase('play');
-      sfx.swoosh.currentTime = 0;
-      void sfx.swoosh.play().catch(() => {});
+      phaseRef.current = 'playing';
+      setPhase('playing');
+      playSound(audio.swoosh);
     }
 
-    const world = getWorld();
-    velocityRef.current = world.flap;
-    sfx.wing.currentTime = 0;
-    void sfx.wing.play().catch(() => {});
-  }, [getWorld, resetGame, sfx]);
+    const world = getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current);
+    velocityRef.current = strong ? world.flap * 1.08 : world.flap;
+    tiltRef.current = -0.45;
+    spawnParticles(world.birdX - world.birdRadius * 0.7, birdYRef.current + world.birdRadius * 0.55, '#dbeafe', strong ? 10 : 6);
+    playSound(audio.wing);
+  }, [audio.swoosh, audio.wing, playSound, reset, spawnParticles]);
 
   useEffect(() => {
-    const onResize = () => {
-      viewportRef.current = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        dpr: Math.min(window.devicePixelRatio || 1, 2),
-      };
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const { width, height, dpr } = viewportRef.current;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-
-      if (phaseRef.current !== 'play') {
-        const world = getWorld();
-        birdYRef.current = world.height * 0.35;
-      }
+    resizeCanvas();
+    reset('ready');
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('orientationchange', resizeCanvas);
     };
-
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [getWorld]);
+  }, [reset, resizeCanvas]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space') {
+      if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
         event.preventDefault();
-        startOrFlap();
+        flap(event.shiftKey);
+      }
+      if (event.code === 'KeyR') {
+        event.preventDefault();
+        reset('ready');
       }
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [startOrFlap]);
+  }, [flap, reset]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return undefined;
 
-    const draw = () => {
-      const world = getWorld();
-      const { width, height, dpr } = viewportRef.current;
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
-
-      if (bgImage.complete) {
-        ctx.drawImage(bgImage, 0, 0, width, height);
-      } else {
-        ctx.fillStyle = '#6ec5ff';
-        ctx.fillRect(0, 0, width, height);
-      }
-
-      ctx.fillStyle = 'rgba(8, 14, 24, 0.25)';
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-      for (let i = 0; i < width; i += 42) {
-        for (let j = 0; j < height - world.groundHeight; j += 42) {
-          ctx.fillRect(i, j, 2, 2);
-        }
-      }
-
-      pipesRef.current.forEach(pipe => {
-        const topHeight = pipe.gapY - world.pipeGap / 2;
-        const bottomY = pipe.gapY + world.pipeGap / 2;
-        const bottomHeight = height - world.groundHeight - bottomY;
-
-        ctx.fillStyle = '#4CAF50';
-        ctx.fillRect(pipe.x, 0, world.pipeWidth, topHeight);
-        ctx.fillRect(pipe.x, bottomY, world.pipeWidth, bottomHeight);
-
-        ctx.fillStyle = '#2E7D32';
-        ctx.fillRect(pipe.x - 6, topHeight - 18, world.pipeWidth + 12, 18);
-        ctx.fillRect(pipe.x - 6, bottomY, world.pipeWidth + 12, 18);
-      });
-
-      ctx.fillStyle = '#d7c0a4';
-      ctx.fillRect(0, height - world.groundHeight, width, world.groundHeight);
-      ctx.fillStyle = '#c0aa8f';
-      for (let x = 0; x < width; x += 24) ctx.fillRect(x, height - world.groundHeight, 2, world.groundHeight);
-
-      const birdY = birdYRef.current;
-      const rotation = Math.max(-0.5, Math.min(1.25, velocityRef.current * 0.0014));
-      ctx.save();
-      ctx.translate(world.birdX, birdY);
-      ctx.rotate(rotation);
-      const activeBird = birdImages.find(img => img.src.includes(selectedPurcar.split('/').pop() ?? '')) ?? birdImages[0];
-      if (activeBird.complete) {
-        ctx.drawImage(activeBird, -world.birdSize / 2, -world.birdSize / 2, world.birdSize, world.birdSize);
-      } else {
-        ctx.fillStyle = '#ffcb54';
-        ctx.beginPath();
-        ctx.arc(0, 0, world.birdSize * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-
-      if (phaseRef.current !== 'play') {
-        ctx.fillStyle = 'rgba(0,0,0,0.45)';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.font = "700 44px 'Arial'";
-        ctx.fillText('FLAPPY BIRD', width / 2, Math.max(180, height * 0.34));
-        ctx.font = "600 20px 'Arial'";
-        if (phaseRef.current === 'ready') ctx.fillText('Press SPACE or TAP to start', width / 2, Math.max(230, height * 0.45));
-        else ctx.fillText('Game Over - Press SPACE or TAP', width / 2, Math.max(230, height * 0.45));
-      }
+    const syncBest = () => {
+      if (scoreRef.current <= bestRef.current) return;
+      bestRef.current = scoreRef.current;
+      setBestScore(bestRef.current);
+      localStorage.setItem(BEST_SCORE_KEY, String(bestRef.current));
     };
 
     const update = (dt: number) => {
-      if (phaseRef.current !== 'play') return;
+      const world = getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current);
 
-      const world = getWorld();
+      cloudsRef.current.forEach(cloud => {
+        cloud.x -= cloud.speed * dt;
+        if (cloud.x + cloud.width < -20) {
+          cloud.x = world.width + cloud.width;
+          cloud.y = world.height * (0.08 + Math.random() * 0.32);
+        }
+      });
 
-      velocityRef.current += world.gravity * dt;
-      birdYRef.current += velocityRef.current * dt;
+      particlesRef.current = particlesRef.current
+        .map(particle => ({
+          ...particle,
+          x: particle.x + particle.vx * dt,
+          y: particle.y + particle.vy * dt,
+          vy: particle.vy + 500 * dt,
+          life: particle.life - dt,
+        }))
+        .filter(particle => particle.life > 0);
 
-      spawnTimerRef.current += dt;
-      const spawnEvery = 1.25;
-      if (spawnTimerRef.current >= spawnEvery) {
-        spawnTimerRef.current = 0;
-        const minGapY = 120;
-        const maxGapY = world.height - world.groundHeight - 120;
-        pipesRef.current.push({
-          x: world.width + world.pipeWidth,
-          gapY: Math.random() * (maxGapY - minGapY) + minGapY,
-          passed: false,
-        });
+      if (phaseRef.current !== 'playing') {
+        birdYRef.current += Math.sin(performance.now() / 340) * dt * 16;
+        tiltRef.current = lerp(tiltRef.current, Math.sin(performance.now() / 500) * 0.1, 0.06);
+        return;
       }
 
-      pipesRef.current = pipesRef.current.filter(pipe => pipe.x + world.pipeWidth > -32);
+      timeRef.current += dt;
+      gustRef.current.time -= dt;
+      if (gustRef.current.time <= 0) {
+        const force = Math.random() < 0.45 ? (Math.random() - 0.5) * world.height * 0.36 : 0;
+        gustRef.current = {
+          time: 2.4 + Math.random() * 2.9,
+          force,
+        };
+        setGust(Math.round(force));
+      }
+
+      spawnRef.current += dt;
+      if (spawnRef.current >= world.spawnEvery) {
+        spawnRef.current = 0;
+        spawnPipe(world);
+      }
+
+      velocityRef.current += (world.gravity + gustRef.current.force) * dt;
+      velocityRef.current *= Math.pow(world.liftDrag, dt * 60);
+      velocityRef.current = clamp(velocityRef.current, world.flap * 1.2, world.maxFall);
+      birdYRef.current += velocityRef.current * dt;
+      tiltRef.current = lerp(tiltRef.current, clamp(velocityRef.current / world.maxFall, -0.58, 1.12), 0.12);
+
       pipesRef.current.forEach(pipe => {
         pipe.x -= world.pipeSpeed * dt;
-        if (!pipe.passed && pipe.x + world.pipeWidth < world.birdX) {
+        pipe.phase += pipe.speed * dt;
+        pipe.gapY = pipe.baseGapY + Math.sin(pipe.phase) * pipe.amp;
+
+        if (!pipe.passed && pipe.x + pipe.width < world.birdX - world.birdRadius) {
           pipe.passed = true;
-          scoreRef.current += 1;
+          scoreRef.current += 1 + Math.floor(comboRef.current / 4);
+          comboRef.current = Math.min(12, comboRef.current + 1);
           setScore(scoreRef.current);
-          sfx.point.currentTime = 0;
-          void sfx.point.play().catch(() => {});
-          if (scoreRef.current > bestScore) {
-            setBestScore(scoreRef.current);
-            localStorage.setItem(BEST_SCORE_KEY, String(scoreRef.current));
+          setCombo(comboRef.current);
+          syncBest();
+          playSound(audio.point);
+          spawnParticles(world.birdX, birdYRef.current, '#facc15', 10);
+        }
+      });
+
+      pipesRef.current = pipesRef.current.filter(pipe => pipe.x + pipe.width > -80);
+
+      ringsRef.current.forEach(ring => {
+        ring.x -= world.pipeSpeed * dt;
+        ring.phase += dt * 4;
+        if (!ring.collected) {
+          const dx = world.birdX - ring.x;
+          const dy = birdYRef.current - (ring.y + Math.sin(ring.phase) * 8);
+          if (dx * dx + dy * dy < Math.pow(world.birdRadius + ring.radius, 2)) {
+            ring.collected = true;
+            scoreRef.current += 2;
+            comboRef.current = Math.min(12, comboRef.current + 2);
+            setScore(scoreRef.current);
+            setCombo(comboRef.current);
+            syncBest();
+            spawnParticles(ring.x, ring.y, '#7dd3fc', 16);
+            playSound(audio.point);
           }
         }
       });
 
-      const birdLeft = world.birdX - world.birdSize * 0.32;
-      const birdRight = world.birdX + world.birdSize * 0.32;
-      const birdTop = birdYRef.current - world.birdSize * 0.32;
-      const birdBottom = birdYRef.current + world.birdSize * 0.32;
+      ringsRef.current = ringsRef.current.filter(ring => ring.x > -60 && !ring.collected);
 
-      const hitGround = birdBottom >= world.height - world.groundHeight;
-      const hitCeiling = birdTop <= 0;
+      const hitCeiling = birdYRef.current - world.birdRadius <= 0;
+      const hitGround = birdYRef.current + world.birdRadius >= world.height - world.groundHeight;
       const hitPipe = pipesRef.current.some(pipe => {
-        const topHeight = pipe.gapY - world.pipeGap / 2;
-        const bottomY = pipe.gapY + world.pipeGap / 2;
-        const overlapX = birdRight > pipe.x && birdLeft < pipe.x + world.pipeWidth;
-        const overlapTop = birdTop < topHeight;
-        const overlapBottom = birdBottom > bottomY;
-        return overlapX && (overlapTop || overlapBottom);
+        const topHeight = pipe.gapY - pipe.gap / 2;
+        const bottomY = pipe.gapY + pipe.gap / 2;
+        return (
+          circleRectHit(world.birdX, birdYRef.current, world.birdRadius * 0.82, pipe.x, 0, pipe.width, topHeight) ||
+          circleRectHit(world.birdX, birdYRef.current, world.birdRadius * 0.82, pipe.x, bottomY, pipe.width, world.height - world.groundHeight - bottomY)
+        );
       });
 
-      if (hitGround || hitCeiling || hitPipe) {
-        phaseRef.current = 'gameover';
-        setPhase('gameover');
-        sfx.hit.currentTime = 0;
-        void sfx.hit.play().catch(() => {});
-        sfx.die.currentTime = 0;
-        void sfx.die.play().catch(() => {});
+      if (hitCeiling || hitGround || hitPipe) finishRun();
+    };
+
+    const drawBackground = (world: World, now: number) => {
+      const { dpr } = viewportRef.current;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, world.width, world.height);
+
+      const sky = ctx.createLinearGradient(0, 0, 0, world.height);
+      sky.addColorStop(0, '#70c7df');
+      sky.addColorStop(0.56, '#d9f3df');
+      sky.addColorStop(1, '#f7d08a');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      if (bgImage.complete) {
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(bgImage, 0, 0, world.width, world.height);
+        ctx.globalAlpha = 1;
+      }
+
+      cloudsRef.current.forEach(cloud => {
+        ctx.save();
+        ctx.globalAlpha = cloud.alpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(cloud.x, cloud.y, cloud.width * 0.42, cloud.width * 0.16, 0, 0, Math.PI * 2);
+        ctx.ellipse(cloud.x + cloud.width * 0.26, cloud.y + 4, cloud.width * 0.34, cloud.width * 0.13, 0, 0, Math.PI * 2);
+        ctx.ellipse(cloud.x - cloud.width * 0.28, cloud.y + 7, cloud.width * 0.28, cloud.width * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      const mountainOffset = (now * 0.012) % Math.max(1, world.width);
+      ctx.fillStyle = 'rgba(24, 89, 82, 0.26)';
+      for (let i = -1; i < 7; i += 1) {
+        const x = i * (world.width / 4) - mountainOffset;
+        ctx.beginPath();
+        ctx.moveTo(x, world.height - world.groundHeight);
+        ctx.lineTo(x + world.width * 0.16, world.height * 0.42);
+        ctx.lineTo(x + world.width * 0.34, world.height - world.groundHeight);
+        ctx.closePath();
+        ctx.fill();
       }
     };
 
-    const gameLoop = (time: number) => {
-      if (lastTimeRef.current == null) lastTimeRef.current = time;
-      const dt = Math.min(0.033, (time - lastTimeRef.current) / 1000);
-      lastTimeRef.current = time;
+    const drawPipe = (world: World, pipe: Pipe) => {
+      const topHeight = pipe.gapY - pipe.gap / 2;
+      const bottomY = pipe.gapY + pipe.gap / 2;
+      const bottomHeight = world.height - world.groundHeight - bottomY;
+      const cap = Math.min(22, pipe.width * 0.22);
 
-      update(dt);
-      draw();
-      rafRef.current = window.requestAnimationFrame(gameLoop);
+      const gradient = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipe.width, 0);
+      gradient.addColorStop(0, '#0f7a5b');
+      gradient.addColorStop(0.5, '#18b66f');
+      gradient.addColorStop(1, '#07553d');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(pipe.x, 0, pipe.width, topHeight);
+      ctx.fillRect(pipe.x, bottomY, pipe.width, bottomHeight);
+
+      ctx.fillStyle = '#073b2d';
+      ctx.fillRect(pipe.x - 8, topHeight - cap, pipe.width + 16, cap);
+      ctx.fillRect(pipe.x - 8, bottomY, pipe.width + 16, cap);
+      ctx.fillStyle = 'rgba(255,255,255,0.24)';
+      ctx.fillRect(pipe.x + pipe.width * 0.18, 0, Math.max(4, pipe.width * 0.08), Math.max(0, topHeight - cap));
+      ctx.fillRect(pipe.x + pipe.width * 0.18, bottomY + cap, Math.max(4, pipe.width * 0.08), Math.max(0, bottomHeight - cap));
     };
 
-    rafRef.current = window.requestAnimationFrame(gameLoop);
+    const drawForeground = (world: World, now: number) => {
+      const groundY = world.height - world.groundHeight;
+      ctx.fillStyle = '#b98645';
+      ctx.fillRect(0, groundY, world.width, world.groundHeight);
+      ctx.fillStyle = '#7c4b2b';
+      ctx.fillRect(0, groundY, world.width, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      const tileOffset = (now * world.pipeSpeed * 0.00025) % 40;
+      for (let x = -40; x < world.width + 40; x += 40) {
+        ctx.fillRect(x - tileOffset, groundY + 18, 18, 4);
+      }
+    };
+
+    const drawBird = (world: World) => {
+      ctx.save();
+      ctx.translate(world.birdX, birdYRef.current);
+      ctx.rotate(tiltRef.current);
+
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.ellipse(4, world.birdRadius * 1.08, world.birdRadius * 0.95, world.birdRadius * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      const avatar = activeAvatar();
+      const size = world.birdRadius * 2.2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, world.birdRadius, 0, Math.PI * 2);
+      ctx.clip();
+      if (avatar.complete && avatar.naturalWidth > 0) {
+        ctx.drawImage(avatar, -size / 2, -size / 2, size, size);
+      } else {
+        ctx.fillStyle = '#f8c24d';
+        ctx.fillRect(-world.birdRadius, -world.birdRadius, world.birdRadius * 2, world.birdRadius * 2);
+      }
+      ctx.restore();
+
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#082f49';
+      ctx.beginPath();
+      ctx.arc(0, 0, world.birdRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(world.birdRadius * 0.78, -world.birdRadius * 0.12);
+      ctx.lineTo(world.birdRadius * 1.34, world.birdRadius * 0.05);
+      ctx.lineTo(world.birdRadius * 0.78, world.birdRadius * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const drawOverlay = (world: World) => {
+      if (phaseRef.current === 'playing') return;
+      ctx.fillStyle = 'rgba(4, 12, 18, 0.42)';
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `900 ${clamp(world.width * 0.055, 34, 72)}px Georgia`;
+      ctx.fillText('Flappy Run', world.width / 2, world.height * 0.35);
+      ctx.font = `800 ${clamp(world.width * 0.022, 15, 24)}px Georgia`;
+      ctx.fillStyle = '#dff7ff';
+      ctx.fillText(phaseRef.current === 'crashed' ? 'Crashed' : 'Ready', world.width / 2, world.height * 0.42);
+    };
+
+    const draw = (now: number) => {
+      const world = getWorldMetrics(viewportRef.current, scoreRef.current, timeRef.current);
+      drawBackground(world, now);
+      pipesRef.current.forEach(pipe => drawPipe(world, pipe));
+
+      ringsRef.current.forEach(ring => {
+        ctx.save();
+        ctx.translate(ring.x, ring.y + Math.sin(ring.phase) * 8);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(0, 0, ring.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, ring.radius * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      drawForeground(world, now);
+      drawBird(world);
+
+      particlesRef.current.forEach(particle => {
+        const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 3 + alpha * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      drawOverlay(world);
+    };
+
+    const loop = (now: number) => {
+      if (lastTimeRef.current == null) lastTimeRef.current = now;
+      const dt = Math.min(0.04, Math.max(0, (now - lastTimeRef.current) / 1000));
+      lastTimeRef.current = now;
+      update(dt);
+      draw(now);
+      rafRef.current = window.requestAnimationFrame(loop);
+    };
+
+    rafRef.current = window.requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
     };
-  }, [bestScore, bgImage, birdImages, getWorld, selectedPurcar, sfx]);
+  }, [activeAvatar, audio.die, audio.hit, audio.point, bgImage, finishRun, playSound, spawnParticles, spawnPipe]);
+
+  const startButtonLabel = phase === 'crashed' ? 'Restart' : 'Launch';
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <canvas ref={canvasRef} onClick={startOrFlap} className="absolute inset-0 cursor-pointer select-none" />
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#071419] text-white">
+      <canvas
+        ref={canvasRef}
+        onPointerDown={event => {
+          event.preventDefault();
+          flap(event.pointerType === 'mouse' && event.shiftKey);
+        }}
+        className="absolute inset-0 h-full w-full cursor-pointer select-none touch-none"
+      />
 
-      <div className="absolute inset-x-0 top-0 z-20 p-3 sm:p-4">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-white/15 bg-black/35 backdrop-blur-md px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <Button variant="outline" onClick={() => navigate('/menu')} className="rounded-full">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3 sm:p-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 rounded-lg border border-white/20 bg-[#06151b]/70 px-2 py-2 shadow-2xl backdrop-blur-md sm:px-3">
+          <Button variant="outline" onClick={() => navigate('/menu')} className="pointer-events-auto h-10 rounded-full bg-white/90 px-3 text-[#08202b] hover:bg-white">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
 
-            <div className="text-center leading-tight">
-              <div className="text-xs uppercase tracking-widest text-[#8ea4d9]">Score / Best</div>
-              <div className="text-xl sm:text-2xl font-black tabular-nums">{score} / {bestScore}</div>
-            </div>
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 text-center sm:max-w-xl">
+            <HudStat icon={Gauge} label="Score" value={score} />
+            <HudStat icon={Zap} label="Combo" value={combo} />
+            <HudStat icon={Wind} label="Wind" value={gust === 0 ? 'Calm' : gust > 0 ? 'Down' : 'Up'} />
+          </div>
 
-            <Button variant="outline" onClick={() => resetGame('ready')} className="rounded-full">
-              <RefreshCcw className="w-4 h-4" />
+          <Button variant="outline" onClick={() => reset('ready')} className="pointer-events-auto h-10 rounded-full bg-white/90 px-3 text-[#08202b] hover:bg-white">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-3 sm:p-5">
+        <div className="mx-auto flex max-w-6xl items-end justify-between gap-3">
+          <div className="rounded-lg border border-white/15 bg-[#06151b]/65 px-4 py-3 shadow-2xl backdrop-blur-md">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9ce6ff]">Best</div>
+            <div className="text-2xl font-black tabular-nums">{bestScore}</div>
+          </div>
+
+          <div className="flex gap-2">
+            {phase !== 'playing' && (
+              <Button onClick={() => flap(true)} className="pointer-events-auto h-14 rounded-full bg-[#facc15] px-5 text-[#17230d] shadow-xl hover:bg-[#ffe063]">
+                <Play className="h-5 w-5" />
+                {startButtonLabel}
+              </Button>
+            )}
+            <Button
+              onPointerDown={event => {
+                event.preventDefault();
+                flap(true);
+              }}
+              className="pointer-events-auto h-16 w-16 rounded-full bg-white text-[#08202b] shadow-xl hover:bg-[#dff7ff] sm:h-20 sm:w-20"
+              aria-label="Flap"
+            >
+              <Zap className="h-6 w-6" />
             </Button>
           </div>
         </div>
       </div>
-
-      {phase !== 'play' && <div className="absolute inset-x-4 bottom-6 z-20 text-center text-sm text-white/90 sm:text-base">Press SPACE or tap to start</div>}
     </main>
   );
 };
+
+const HudStat: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number | string;
+}> = ({ icon: Icon, label, value }) => (
+  <div className="min-w-0 rounded-lg border border-white/10 bg-white/10 px-2 py-1.5">
+    <div className="flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/65">
+      <Icon className="h-3 w-3" />
+      <span className="hidden xs:inline sm:inline">{label}</span>
+    </div>
+    <div className="truncate text-lg font-black tabular-nums sm:text-xl">{value}</div>
+  </div>
+);
