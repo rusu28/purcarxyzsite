@@ -58,8 +58,18 @@ type Cloud = {
 type World = ReturnType<typeof getWorldMetrics>;
 
 const BEST_SCORE_KEY = 'flappy-best-score';
+const FRAME_RATE_KEY = 'purcar-arcade-fps';
+const FRAME_RATE_OPTIONS = [60, 90, 120, 144, 165, 240] as const;
+type FrameRate = typeof FRAME_RATE_OPTIONS[number];
+
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+const readStoredFrameRate = (): FrameRate => {
+  if (typeof window === 'undefined') return 144;
+  const stored = Number(localStorage.getItem(FRAME_RATE_KEY));
+  return FRAME_RATE_OPTIONS.includes(stored as FrameRate) ? (stored as FrameRate) : 144;
+};
 
 const getViewport = (): Viewport => {
   const screenWidth = typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth);
@@ -180,6 +190,7 @@ export const FlappyBird: React.FC = () => {
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const viewportRef = useRef<Viewport>(getViewport());
+  const frameRateRef = useRef<FrameRate>(readStoredFrameRate());
 
   const phaseRef = useRef<Phase>('ready');
   const scoreRef = useRef(0);
@@ -201,6 +212,7 @@ export const FlappyBird: React.FC = () => {
   const [bestScore, setBestScore] = useState(bestRef.current);
   const [combo, setCombo] = useState(0);
   const [gust, setGust] = useState(0);
+  const [frameRate, setFrameRate] = useState<FrameRate>(frameRateRef.current);
   const [avatarSrc, setAvatarSrc] = useState(() => resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
 
   const avatarImages = useMemo(makeImages, []);
@@ -214,6 +226,13 @@ export const FlappyBird: React.FC = () => {
   const playSound = useCallback((sound: HTMLAudioElement) => {
     sound.currentTime = 0;
     void sound.play().catch(() => {});
+  }, []);
+
+  const updateFrameRate = useCallback((nextFrameRate: FrameRate) => {
+    frameRateRef.current = nextFrameRate;
+    setFrameRate(nextFrameRate);
+    localStorage.setItem(FRAME_RATE_KEY, String(nextFrameRate));
+    lastTimeRef.current = null;
   }, []);
 
   const resizeCanvas = useCallback(() => {
@@ -698,9 +717,21 @@ export const FlappyBird: React.FC = () => {
     };
 
     const loop = (now: number) => {
-      if (lastTimeRef.current == null) lastTimeRef.current = now;
-      const dt = Math.min(0.04, Math.max(0, (now - lastTimeRef.current) / 1000));
-      lastTimeRef.current = now;
+      if (lastTimeRef.current == null) {
+        lastTimeRef.current = now;
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+
+      const targetMs = 1000 / frameRateRef.current;
+      const elapsed = now - lastTimeRef.current;
+      if (elapsed < targetMs - 0.75) {
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+
+      const dt = Math.min(0.05, Math.max(0, elapsed / 1000));
+      lastTimeRef.current = now - (elapsed % targetMs);
       update(dt);
       draw(now);
       rafRef.current = window.requestAnimationFrame(loop);
@@ -751,7 +782,8 @@ export const FlappyBird: React.FC = () => {
             <div className="text-2xl font-black tabular-nums">{bestScore}</div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+            <FrameRateSelect value={frameRate} onChange={updateFrameRate} />
             {phase !== 'playing' && (
               <Button onClick={() => flap(true)} className="pointer-events-auto h-14 rounded-full bg-[#facc15] px-5 text-[#17230d] shadow-xl hover:bg-[#ffe063]">
                 <Play className="h-5 w-5" />
@@ -787,4 +819,25 @@ const HudStat: React.FC<{
     </div>
     <div className="truncate text-lg font-black tabular-nums sm:text-xl">{value}</div>
   </div>
+);
+
+const FrameRateSelect: React.FC<{
+  value: FrameRate;
+  onChange: (value: FrameRate) => void;
+}> = ({ value, onChange }) => (
+  <label className="pointer-events-auto flex h-12 items-center gap-2 rounded-full border border-white/15 bg-[#06151b]/70 px-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-xl backdrop-blur-md">
+    <span className="text-[#9ce6ff]">FPS</span>
+    <select
+      aria-label="Frame rate"
+      value={value}
+      onChange={event => onChange(Number(event.target.value) as FrameRate)}
+      className="h-8 rounded-full border border-white/15 bg-black/35 px-2 text-sm font-black text-white outline-none"
+    >
+      {FRAME_RATE_OPTIONS.map(option => (
+        <option key={option} value={option} className="bg-[#06151b] text-white">
+          {option}
+        </option>
+      ))}
+    </select>
+  </label>
 );

@@ -72,8 +72,18 @@ type Star = {
 type World = ReturnType<typeof getWorldMetrics>;
 
 const BEST_KEY = 'dino-best-score';
+const FRAME_RATE_KEY = 'purcar-arcade-fps';
+const FRAME_RATE_OPTIONS = [60, 90, 120, 144, 165, 240] as const;
+type FrameRate = typeof FRAME_RATE_OPTIONS[number];
+
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+const readStoredFrameRate = (): FrameRate => {
+  if (typeof window === 'undefined') return 144;
+  const stored = Number(localStorage.getItem(FRAME_RATE_KEY));
+  return FRAME_RATE_OPTIONS.includes(stored as FrameRate) ? (stored as FrameRate) : 144;
+};
 
 const getViewport = (): Viewport => {
   const screenWidth = typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth);
@@ -173,6 +183,7 @@ export const Dino: React.FC = () => {
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const viewportRef = useRef<Viewport>(getViewport());
+  const frameRateRef = useRef<FrameRate>(readStoredFrameRate());
 
   const phaseRef = useRef<Phase>('ready');
   const runnerRef = useRef<Runner>({
@@ -205,6 +216,7 @@ export const Dino: React.FC = () => {
   const [bestScore, setBestScore] = useState(bestRef.current);
   const [shield, setShield] = useState(0);
   const [energy, setEnergy] = useState(0);
+  const [frameRate, setFrameRate] = useState<FrameRate>(frameRateRef.current);
   const [speedLabel, setSpeedLabel] = useState('1.0x');
   const [avatarSrc, setAvatarSrc] = useState(() => resolvePurcarAvatar(loadStoredSettings().purcarAvatar, Date.now()));
 
@@ -229,6 +241,13 @@ export const Dino: React.FC = () => {
       const world = getWorldMetrics(viewportRef.current, scoreRef.current);
       runnerRef.current.y = world.groundY - world.playerSize;
     }
+  }, []);
+
+  const updateFrameRate = useCallback((nextFrameRate: FrameRate) => {
+    frameRateRef.current = nextFrameRate;
+    setFrameRate(nextFrameRate);
+    localStorage.setItem(FRAME_RATE_KEY, String(nextFrameRate));
+    lastTimeRef.current = null;
   }, []);
 
   const buildStars = useCallback(() => {
@@ -917,9 +936,21 @@ export const Dino: React.FC = () => {
     };
 
     const loop = (now: number) => {
-      if (lastTimeRef.current == null) lastTimeRef.current = now;
-      const dt = Math.min(0.04, Math.max(0, (now - lastTimeRef.current) / 1000));
-      lastTimeRef.current = now;
+      if (lastTimeRef.current == null) {
+        lastTimeRef.current = now;
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+
+      const targetMs = 1000 / frameRateRef.current;
+      const elapsed = now - lastTimeRef.current;
+      if (elapsed < targetMs - 0.75) {
+        rafRef.current = window.requestAnimationFrame(loop);
+        return;
+      }
+
+      const dt = Math.min(0.05, Math.max(0, elapsed / 1000));
+      lastTimeRef.current = now - (elapsed % targetMs);
       update(dt);
       draw();
       rafRef.current = window.requestAnimationFrame(loop);
@@ -974,7 +1005,8 @@ export const Dino: React.FC = () => {
             <div className="text-2xl font-black tabular-nums">{bestScore}</div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+            <FrameRateSelect value={frameRate} onChange={updateFrameRate} />
             <Button
               onPointerDown={event => {
                 event.preventDefault();
@@ -1024,4 +1056,25 @@ const HudStat: React.FC<{
     </div>
     <div className="truncate text-lg font-black tabular-nums sm:text-xl">{value}</div>
   </div>
+);
+
+const FrameRateSelect: React.FC<{
+  value: FrameRate;
+  onChange: (value: FrameRate) => void;
+}> = ({ value, onChange }) => (
+  <label className="pointer-events-auto flex h-12 items-center gap-2 rounded-full border border-white/15 bg-[#10131c]/70 px-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-xl backdrop-blur-md">
+    <span className="text-[#f5d7a0]">FPS</span>
+    <select
+      aria-label="Frame rate"
+      value={value}
+      onChange={event => onChange(Number(event.target.value) as FrameRate)}
+      className="h-8 rounded-full border border-white/15 bg-black/35 px-2 text-sm font-black text-white outline-none"
+    >
+      {FRAME_RATE_OPTIONS.map(option => (
+        <option key={option} value={option} className="bg-[#10131c] text-white">
+          {option}
+        </option>
+      ))}
+    </select>
+  </label>
 );
